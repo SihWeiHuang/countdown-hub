@@ -114,6 +114,16 @@ h1 {
   opacity: 0.8;
 }
 
+.tabs-bar .clear-all-btn {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: none;
+  background: #ff3b30;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
 .lang-toggle-btn {
   position: fixed;
   top: 16px;
@@ -144,6 +154,19 @@ h1 {
   grid-template-columns: repeat(5, minmax(0, 1fr));
   font-size: 12px;
   position: relative;
+  gap: 0;
+}
+
+.timer-card.dragging {
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+  transform: rotate(0.2deg);
+  opacity: 0.75;
+  z-index: 999;
+  cursor: grabbing;
+}
+
+.timer-card.dragging * {
+  pointer-events: none;
 }
 
 .timer-zone {
@@ -201,6 +224,19 @@ h1 {
   cursor: grab;
   user-select: none;
   color: #6e6e73;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-placeholder {
+  height: var(--ph-h, 50px);
+  border-radius: 10px;
+  background: rgba(0, 113, 227, 0.06);
+  border: 1px dashed rgba(0, 113, 227, 0.35);
 }
 
 .timer-title-input {
@@ -330,12 +366,8 @@ h1 {
 .drop-indicator {
   height: 0;
   border-top: 3px solid #0071e3;
-}
-
-.drop-indicator.in-card {
-  position: absolute;
-  left: 0;
-  right: 0;
+  border-radius: 2px;
+  margin: 2px 0;
 }
 
 .control-panel {
@@ -351,9 +383,6 @@ h1 {
   gap: 8px;
 }
 
-.clear-all-btn {
-  background: #ff3b30 !important;
-}
 
 /* 中等寬度：第二欄略寬於等分以利輸入；第四欄多留空間，英文 Start/Reset/Delete 才不換行 */
 @media (max-width: 1400px) and (min-width: 901px) {

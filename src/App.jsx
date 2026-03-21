@@ -33,6 +33,7 @@ const i18n = {
     addTimerLimitReached: '此標籤已達計時器上限（{max}）',
     clearAll: '清空全部',
     clearAllConfirm: '確定要清空所有標籤與計時器資料嗎？此動作無法復原。',
+    clearAllDone: '已清空所有標籤與計時器。',
     deleteTabTitle: '刪除標籤',
     renameTabPrompt: '標籤名稱',
     keepOneTab: '至少需要保留 1 個標籤頁。',
@@ -66,6 +67,7 @@ const i18n = {
     addTimerLimitReached: 'Timer limit reached for this tab ({max})',
     clearAll: 'Clear All',
     clearAllConfirm: 'Clear all tabs and timers? This cannot be undone.',
+    clearAllDone: 'All tabs and timers have been cleared.',
     deleteTabTitle: 'Delete tab',
     renameTabPrompt: 'Tab name',
     keepOneTab: 'At least one tab is required.',
@@ -214,7 +216,8 @@ export default function App() {
   const [language, setLanguage] = useState(initialState.language)
   const [tabs, setTabs] = useState(initialState.tabs)
   const [activeTabId, setActiveTabId] = useState(initialState.activeTabId)
-  const [dragState, setDragState] = useState(null)
+  const activeContainerRef = useRef(null)
+  const dragRuntimeRef = useRef(null)
   const nextTabIdRef = useRef(
     Math.max(2, ...initialState.tabs.map((tab) => Number(tab.id) + 1)),
   )
@@ -412,40 +415,161 @@ export default function App() {
     }))
   }
 
-  const onDragStartHandle = (e, tabId, timerId) => {
-    e.dataTransfer.effectAllowed = 'move'
-    setDragState({ tabId, sourceId: timerId, overId: timerId, position: 'after' })
+  const onPointerDownHandle = (e, tabId, timerId) => {
+    if (e.button !== 0) return
+    const container = activeContainerRef.current
+    if (!container) return
+    const handleEl = e.currentTarget
+    const cardEl = handleEl.closest('.timer-card')
+    if (!cardEl) return
+    e.preventDefault()
+
+    const pointerId = e.pointerId
+    handleEl.setPointerCapture(pointerId)
+
+    const cardRect = cardEl.getBoundingClientRect()
+    const offsetX = e.clientX - cardRect.left
+    const offsetY = e.clientY - cardRect.top
+
+    const placeholderEl = document.createElement('div')
+    placeholderEl.className = 'drag-placeholder'
+    placeholderEl.style.setProperty('--ph-h', `${cardRect.height}px`)
+    container.insertBefore(placeholderEl, cardEl)
+
+    const indicatorEl = document.createElement('div')
+    indicatorEl.className = 'drop-indicator'
+    container.insertBefore(indicatorEl, placeholderEl.nextSibling)
+
+    cardEl.classList.add('dragging')
+    cardEl.style.width = `${cardRect.width}px`
+    cardEl.style.position = 'fixed'
+    cardEl.style.left = `${cardRect.left}px`
+    cardEl.style.top = `${cardRect.top}px`
+    cardEl.style.zIndex = '999'
+
+    dragRuntimeRef.current = {
+      tabId,
+      sourceId: timerId,
+      pointerId,
+      handleEl,
+      cardEl,
+      container,
+      placeholderEl,
+      indicatorEl,
+      offsetX,
+      offsetY,
+      raf: null,
+    }
   }
 
-  const onDragOverCard = (e, tabId, timerId) => {
-    e.preventDefault()
-    if (!dragState || dragState.tabId !== tabId) return
-    const rect = e.currentTarget.getBoundingClientRect()
-    const middle = rect.top + rect.height / 2
-    const position = e.clientY < middle ? 'before' : 'after'
-    setDragState((prev) =>
-      prev ? { ...prev, overId: timerId, position } : prev,
-    )
-  }
+  useEffect(() => {
+    const getAfterElement = (container, clientY) => {
+      const cards = [...container.querySelectorAll('.timer-card:not(.dragging)')]
+      let closest = { offset: Number.NEGATIVE_INFINITY, element: null }
+      for (const el of cards) {
+        const rect = el.getBoundingClientRect()
+        const offset = clientY - (rect.top + rect.height / 2)
+        if (offset < 0 && offset > closest.offset) {
+          closest = { offset, element: el }
+        }
+      }
+      return closest.element
+    }
 
-  const onDropContainer = (e, tabId) => {
-    e.preventDefault()
-    if (!dragState || dragState.tabId !== tabId) return
-    setTabs((prev) =>
-      prev.map((tab) => {
-        if (tab.id !== tabId) return tab
-        const timers = [...tab.timers]
-        const from = timers.findIndex((tm) => tm.id === dragState.sourceId)
-        const over = timers.findIndex((tm) => tm.id === dragState.overId)
-        if (from < 0 || over < 0) return tab
-        const [item] = timers.splice(from, 1)
-        const insertAt = dragState.position === 'before' ? over : over + 1
-        timers.splice(insertAt > from ? insertAt - 1 : insertAt, 0, item)
-        return { ...tab, timers }
-      }),
-    )
-    setDragState(null)
-  }
+    const cleanup = () => {
+      const rt = dragRuntimeRef.current
+      if (!rt) return
+      if (rt.raf) cancelAnimationFrame(rt.raf)
+      rt.cardEl.classList.remove('dragging')
+      rt.cardEl.style.position = ''
+      rt.cardEl.style.left = ''
+      rt.cardEl.style.top = ''
+      rt.cardEl.style.width = ''
+      rt.cardEl.style.zIndex = ''
+      rt.cardEl.style.transform = ''
+      rt.cardEl.style.pointerEvents = ''
+      rt.placeholderEl.remove()
+      rt.indicatorEl.remove()
+      dragRuntimeRef.current = null
+    }
+
+    const applyDomOrderToState = (tabId, container) => {
+      const ids = [...container.querySelectorAll('.timer-card')]
+        .map((el) => Number(el.dataset.timerId))
+        .filter((id) => Number.isFinite(id))
+      if (!ids.length) return
+      setTabs((prev) =>
+        prev.map((tab) => {
+          if (tab.id !== tabId) return tab
+          const map = new Map(tab.timers.map((tm) => [tm.id, tm]))
+          const ordered = ids.map((id) => map.get(id)).filter(Boolean)
+          if (ordered.length !== tab.timers.length) return tab
+          return { ...tab, timers: ordered }
+        }),
+      )
+    }
+
+    const moveAt = (rt, clientX, clientY) => {
+      const x = clientX - rt.offsetX
+      const y = clientY - rt.offsetY
+      rt.cardEl.style.left = `${x}px`
+      rt.cardEl.style.top = `${y}px`
+
+      const afterEl = getAfterElement(rt.container, clientY)
+      if (afterEl) {
+        rt.container.insertBefore(rt.indicatorEl, afterEl)
+      } else {
+        rt.container.appendChild(rt.indicatorEl)
+      }
+
+      const edge = 80
+      const scrollY = window.scrollY
+      const vpTop = scrollY
+      const vpBottom = scrollY + window.innerHeight
+      const yPage = clientY + scrollY
+      if (yPage < vpTop + edge) {
+        window.scrollTo({ top: scrollY - clamp((vpTop + edge - yPage) * 0.35, 3, 18) })
+      } else if (yPage > vpBottom - edge) {
+        window.scrollTo({ top: scrollY + clamp((yPage - (vpBottom - edge)) * 0.35, 3, 18) })
+      }
+    }
+
+    const onPointerMove = (ev) => {
+      const rt = dragRuntimeRef.current
+      if (!rt || ev.pointerId !== rt.pointerId) return
+      if (rt.raf) return
+      rt.raf = requestAnimationFrame(() => {
+        const current = dragRuntimeRef.current
+        if (!current) return
+        current.raf = null
+        moveAt(current, ev.clientX, ev.clientY)
+      })
+    }
+
+    const onPointerUp = (ev) => {
+      const rt = dragRuntimeRef.current
+      if (!rt || ev.pointerId !== rt.pointerId) return
+      rt.handleEl.releasePointerCapture(rt.pointerId)
+
+      if (rt.indicatorEl.parentElement === rt.container) {
+        rt.container.insertBefore(rt.cardEl, rt.indicatorEl)
+      } else {
+        rt.container.insertBefore(rt.cardEl, rt.placeholderEl)
+      }
+      applyDomOrderToState(rt.tabId, rt.container)
+      cleanup()
+    }
+
+    window.addEventListener('pointermove', onPointerMove, { passive: true })
+    window.addEventListener('pointerup', onPointerUp)
+    window.addEventListener('pointercancel', onPointerUp)
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerup', onPointerUp)
+      window.removeEventListener('pointercancel', onPointerUp)
+      cleanup()
+    }
+  }, [])
 
   const clearAllData = () => {
     const ok = confirm(t('clearAllConfirm'))
@@ -455,6 +579,7 @@ export default function App() {
     setTabs(resetTabs)
     setActiveTabId(1)
     localStorage.removeItem(STORAGE_KEY)
+    alert(t('clearAllDone'))
   }
 
   const isTabLimitReached = tabs.length >= MAX_TABS
@@ -507,28 +632,24 @@ export default function App() {
         >
           {t('addTab')}
         </button>
+        <button className="clear-all-btn" onClick={clearAllData}>
+          {t('clearAll')}
+        </button>
       </div>
 
-      <div className="timers-container" onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDropContainer(e, activeTab.id)}>
+      <div className="timers-container" ref={activeContainerRef}>
         {activeTab.timers.map((tm) => (
           <div
             key={tm.id}
+            data-timer-id={tm.id}
             className={`timer-card ${tm.finished ? 'finished' : ''}`}
-            onDragOver={(e) => onDragOverCard(e, activeTab.id, tm.id)}
           >
-            {dragState &&
-              dragState.tabId === activeTab.id &&
-              dragState.overId === tm.id &&
-              dragState.position === 'before' && <div className="drop-indicator in-card" />}
-
             <div className="timer-zone">
               <div className="zone-row">
                 <div
                   className="drag-handle"
-                  draggable
                   title={t('dragSort')}
-                  onDragStart={(e) => onDragStartHandle(e, activeTab.id, tm.id)}
-                  onDragEnd={() => setDragState(null)}
+                  onPointerDown={(e) => onPointerDownHandle(e, activeTab.id, tm.id)}
                 >
                   ⋮⋮
                 </div>
@@ -604,10 +725,6 @@ export default function App() {
               </div>
             </div>
 
-            {dragState &&
-              dragState.tabId === activeTab.id &&
-              dragState.overId === tm.id &&
-              dragState.position === 'after' && <div className="drop-indicator in-card" />}
           </div>
         ))}
       </div>
@@ -623,9 +740,6 @@ export default function App() {
           }
         >
           {t('addTimer')}
-        </button>
-        <button className="clear-all-btn" onClick={clearAllData}>
-          {t('clearAll')}
         </button>
       </div>
       </div>
