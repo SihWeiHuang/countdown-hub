@@ -6,6 +6,7 @@ const DEFAULT_DELAY_SECONDS = 40
 const EMPTY_TIME_TEXT = '--:--:--'
 const MAX_TABS = 10
 const MAX_TIMERS_PER_TAB = 20
+const STORAGE_KEY = 'countdown-hub.state.v1'
 
 const i18n = {
   zh: {
@@ -30,6 +31,8 @@ const i18n = {
     endRecord: '結束時間紀錄',
     addTimer: '新增計時器',
     addTimerLimitReached: '此標籤已達計時器上限（{max}）',
+    clearAll: '清空全部',
+    clearAllConfirm: '確定要清空所有標籤與計時器資料嗎？此動作無法復原。',
     deleteTabTitle: '刪除標籤',
     renameTabPrompt: '標籤名稱',
     keepOneTab: '至少需要保留 1 個標籤頁。',
@@ -61,6 +64,8 @@ const i18n = {
     endRecord: 'End time',
     addTimer: 'Add Timer',
     addTimerLimitReached: 'Timer limit reached for this tab ({max})',
+    clearAll: 'Clear All',
+    clearAllConfirm: 'Clear all tabs and timers? This cannot be undone.',
     deleteTabTitle: 'Delete tab',
     renameTabPrompt: 'Tab name',
     keepOneTab: 'At least one tab is required.',
@@ -131,12 +136,88 @@ function createTab(id) {
   return { id, name: `tab ${id}`, timers: [], nextTimerId: 1 }
 }
 
+function parseDateOrNull(value) {
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function loadPersistedState() {
+  const fallback = {
+    language: 'zh',
+    tabs: [createTab(1)],
+    activeTabId: 1,
+  }
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return fallback
+    const parsed = JSON.parse(raw)
+    const language = parsed.language === 'en' ? 'en' : 'zh'
+    const inputTabs = Array.isArray(parsed.tabs) ? parsed.tabs : []
+    const normalizedTabs = inputTabs
+      .slice(0, MAX_TABS)
+      .map((tab, tabIndex) => {
+        const tabId = Number(tab.id) > 0 ? Number(tab.id) : tabIndex + 1
+        const inputTimers = Array.isArray(tab.timers) ? tab.timers : []
+        const timers = inputTimers.slice(0, MAX_TIMERS_PER_TAB).map((tm, timerIndex) => {
+          const timerId = Number(tm.id) > 0 ? Number(tm.id) : timerIndex + 1
+          const baseH = clamp(Number(tm.baseH) || 0, 0, 999)
+          const baseM = clamp(Number(tm.baseM) || 0, 0, 59)
+          const baseS = clamp(Number(tm.baseS) || 0, 0, 59)
+          const delayM = Math.max(0, Number(tm.delayM) || 0)
+          const delayS = clamp(Number(tm.delayS) || 0, 0, 59)
+          const totalMs = msFromParts(baseH, baseM, baseS) + msFromParts(0, delayM, delayS)
+          const remainingMs = clamp(Number(tm.remainingMs) || 0, 0, totalMs)
+          const endAtEpoch = Number(tm.endAtEpoch)
+          return {
+            ...createTimer(timerId),
+            ...tm,
+            id: timerId,
+            name: typeof tm.name === 'string' ? tm.name : '',
+            baseH,
+            baseM,
+            baseS,
+            delayM,
+            delayS,
+            totalMs,
+            remainingMs,
+            isRunning: Boolean(tm.isRunning) && Number.isFinite(endAtEpoch),
+            finished: Boolean(tm.finished),
+            startedAt: parseDateOrNull(tm.startedAt),
+            endedAt: parseDateOrNull(tm.endedAt),
+            endAtEpoch: Number.isFinite(endAtEpoch) ? endAtEpoch : null,
+          }
+        })
+        const maxTimerId = timers.reduce((max, tm) => Math.max(max, tm.id), 0)
+        return {
+          id: tabId,
+          name: typeof tab.name === 'string' && tab.name.trim() ? tab.name : `tab ${tabId}`,
+          timers,
+          nextTimerId:
+            Number(tab.nextTimerId) > maxTimerId
+              ? Number(tab.nextTimerId)
+              : maxTimerId + 1,
+        }
+      })
+    const tabs = normalizedTabs.length ? normalizedTabs : fallback.tabs
+    const activeTabId = tabs.some((tab) => tab.id === parsed.activeTabId)
+      ? parsed.activeTabId
+      : tabs[0].id
+    return { language, tabs, activeTabId }
+  } catch {
+    return fallback
+  }
+}
+
 export default function App() {
-  const [language, setLanguage] = useState('zh')
-  const [tabs, setTabs] = useState([createTab(1)])
-  const [activeTabId, setActiveTabId] = useState(1)
+  const initialState = useMemo(() => loadPersistedState(), [])
+  const [language, setLanguage] = useState(initialState.language)
+  const [tabs, setTabs] = useState(initialState.tabs)
+  const [activeTabId, setActiveTabId] = useState(initialState.activeTabId)
   const [dragState, setDragState] = useState(null)
-  const nextTabIdRef = useRef(2)
+  const nextTabIdRef = useRef(
+    Math.max(2, ...initialState.tabs.map((tab) => Number(tab.id) + 1)),
+  )
 
   const t = (key, vars = {}) => {
     const text = (i18n[language] && i18n[language][key]) || key
@@ -173,6 +254,22 @@ export default function App() {
     }, 250)
     return () => clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    const data = {
+      language,
+      activeTabId,
+      tabs: tabs.map((tab) => ({
+        ...tab,
+        timers: tab.timers.map((tm) => ({
+          ...tm,
+          startedAt: tm.startedAt ? new Date(tm.startedAt).toISOString() : null,
+          endedAt: tm.endedAt ? new Date(tm.endedAt).toISOString() : null,
+        })),
+      })),
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  }, [language, tabs, activeTabId])
 
   const updateTimer = (tabId, timerId, updater) => {
     setTabs((prev) =>
@@ -350,6 +447,16 @@ export default function App() {
     setDragState(null)
   }
 
+  const clearAllData = () => {
+    const ok = confirm(t('clearAllConfirm'))
+    if (!ok) return
+    const resetTabs = [createTab(1)]
+    nextTabIdRef.current = 2
+    setTabs(resetTabs)
+    setActiveTabId(1)
+    localStorage.removeItem(STORAGE_KEY)
+  }
+
   const isTabLimitReached = tabs.length >= MAX_TABS
   const isTimerLimitReached = activeTab.timers.length >= MAX_TIMERS_PER_TAB
 
@@ -516,6 +623,9 @@ export default function App() {
           }
         >
           {t('addTimer')}
+        </button>
+        <button className="clear-all-btn" onClick={clearAllData}>
+          {t('clearAll')}
         </button>
       </div>
       </div>

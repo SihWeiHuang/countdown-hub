@@ -346,6 +346,13 @@ h1 {
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.clear-all-btn {
+  background: #ff3b30 !important;
 }
 
 /* 中等寬度：第二欄略寬於等分以利輸入；第四欄多留空間，英文 Start/Reset/Delete 才不換行 */
