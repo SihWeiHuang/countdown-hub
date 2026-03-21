@@ -62,7 +62,7 @@ const i18n = {
     deleteTabConfirmEmpty: 'Delete tab "{name}"?',
     invalidHms: 'Enter valid hour/minute/second (minute/second 0–59).',
     invalidDelay: 'Enter valid delay minute/second (second 0–59).',
-    footerPlaceholder: 'About · Donate · Privacy (placeholder for future links)',
+    footerPlaceholder: 'About · Donate · Privacy',
   },
 }
 
