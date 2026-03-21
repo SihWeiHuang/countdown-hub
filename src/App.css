@@ -115,6 +115,7 @@ h1 {
 }
 
 .tabs-bar .clear-all-btn {
+  margin-left: auto;
   padding: 8px 14px;
   border-radius: 999px;
   border: none;
