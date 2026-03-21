@@ -1,4 +1,4 @@
-# timers-react（倒數計時器）
+# countdown-hub（倒數計時器）
 
 個人專案：React + Vite 製作的多標籤倒數計時器網頁。
 
@@ -26,15 +26,15 @@ npm run build
 ### 第一次：在電腦上已提交、尚未推上 GitHub
 
 1. 到 [GitHub](https://github.com) 登入 → **New repository**。
-2. **Repository name** 填例如 `timers-react`。
+2. **Repository name** 填例如 `countdown-hub`。
 3. 選 **Public**（免費）。
 4. **不要**勾選「Add a README」等（保持空儲存庫）。
 5. 建立後，照頁面上的指令執行（若你已在本機 `git commit` 過，通常只需要 **remote** 與 **push**）：
 
 ```bash
-cd /你的專案路徑/timers-react
+cd /你的專案路徑/countdown-hub
 git branch -M main
-git remote add origin https://github.com/你的帳號/timers-react.git
+git remote add origin https://github.com/你的帳號/countdown-hub.git
 git push -u origin main
 ```
 
@@ -53,7 +53,7 @@ git push
 ## 免費上線（Vercel，建議）
 
 1. 到 [vercel.com](https://vercel.com) 用 GitHub 帳號登入（免費）。
-2. **Add New Project** → **Import** 你的 `timers-react` 儲存庫。
+2. **Add New Project** → **Import** 你的 `countdown-hub` 儲存庫。
 3. **Framework Preset** 選 **Vite**（或保持自動偵測）。
 4. **Build Command**：`npm run build`  
    **Output Directory**：`dist`
