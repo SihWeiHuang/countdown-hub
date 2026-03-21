@@ -7,7 +7,7 @@ const EMPTY_TIME_TEXT = '--:--:--'
 
 const i18n = {
   zh: {
-    pageTitle: '倒數計時器',
+    pageTitle: '倒數計時器a',
     addTab: '+ 新增標籤',
     switchLang: 'EN',
     dragSort: '拖曳排序',
