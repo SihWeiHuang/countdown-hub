@@ -1,0 +1,384 @@
+.app {
+  box-sizing: border-box;
+  max-width: 100%;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px;
+  color: #1d1d1f;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-height: 100vh;
+}
+
+/* 包住主內容 + 頁尾，避免與語言按鈕同一層 flex 時影響子區塊寬度 */
+.app-shell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* 主要內容區：可伸長，把頁尾推到底（內容少時）或隨內容變高（計時器很多時） */
+.app-main {
+  flex: 1 0 auto;
+  width: 100%;
+  min-width: 0;
+}
+
+.site-footer {
+  flex-shrink: 0;
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid #e5e5ea;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #6e6e73;
+  text-align: center;
+}
+
+h1 {
+  margin-top: 0;
+  font-size: 24px;
+}
+
+.tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 16px;
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid #d2d2d7;
+  background: #fff;
+  cursor: pointer;
+  user-select: none;
+  max-width: 240px;
+}
+
+.tab.active {
+  border-color: #0071e3;
+  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.12);
+}
+
+.tab-name {
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+}
+
+.tab-close {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 4px;
+  color: #6e6e73;
+}
+
+.add-tab-btn,
+.control-panel button {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: none;
+  background: #0071e3;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.lang-toggle-btn {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 2000;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: none;
+  background: #1d1d1f;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.timers-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.timer-card {
+  background: #fff;
+  padding: 8px 10px;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  font-size: 12px;
+  position: relative;
+}
+
+.timer-zone {
+  min-width: 0;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.timer-zone + .timer-zone {
+  border-left: 1px solid #e5e5ea;
+}
+
+.zone-row,
+.stats-row,
+.timer-actions,
+.time-input-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.zone-row {
+  gap: 8px;
+  width: 100%;
+}
+
+.stats-row {
+  gap: 40px;
+  width: 100%;
+}
+
+.zone-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.drag-handle {
+  width: 18px;
+  min-width: 18px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid #d2d2d7;
+  background: #fafafa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  user-select: none;
+  color: #6e6e73;
+}
+
+.timer-title-input {
+  width: min(220px, 100%);
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid #d2d2d7;
+  font-size: 12px;
+}
+
+.label-small {
+  font-size: 11px;
+  color: #6e6e73;
+}
+
+.timer-total-display,
+.timer-display {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.time-input-row {
+  gap: 4px;
+  font-size: 11px;
+  color: #6e6e73;
+  /* 盡量維持同一行；欄位太窄時由外層 grid 改欄寬或改直向堆疊處理 */
+  flex-wrap: nowrap;
+  justify-content: center;
+}
+
+.time-input-row input {
+  width: 42px;
+  padding: 2px 4px;
+  border-radius: 6px;
+  border: 1px solid #d2d2d7;
+  font-size: 11px;
+}
+
+.timer-actions {
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.timer-actions button {
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: none;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.btn-start {
+  background: #34c759;
+  color: #fff;
+}
+
+.btn-start.paused {
+  background: #ff9f0a;
+}
+
+.btn-reset {
+  background: #e5e5ea;
+}
+
+.btn-delete {
+  background: #ff3b30;
+  color: #fff;
+}
+
+.timer-card.finished {
+  /* 背景／陰影約為前一版的 40% 強度（視覺上減弱約 60%） */
+  background: linear-gradient(
+    180deg,
+    rgba(255, 159, 10, 0.09) 0%,
+    rgba(255, 200, 120, 0.05) 45%,
+    rgba(255, 245, 230, 0.26) 100%
+  );
+  border: 2px solid #e68600;
+  box-shadow:
+    0 0 0 1px rgba(255, 159, 10, 0.22),
+    0 3px 12px rgba(255, 140, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  animation: timer-finished-pulse 2.2s ease-in-out infinite;
+}
+
+@keyframes timer-finished-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(255, 159, 10, 0.22),
+      0 3px 12px rgba(255, 140, 0, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+  50% {
+    box-shadow:
+      0 0 0 2px rgba(255, 159, 10, 0.18),
+      0 4px 16px rgba(255, 120, 0, 0.18),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timer-card.finished {
+    animation: none;
+    box-shadow:
+      0 0 0 2px rgba(255, 159, 10, 0.26),
+      0 4px 14px rgba(255, 140, 0, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  }
+}
+
+.datetime-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.datetime-sep {
+  width: 1.5px;
+  height: 20px;
+  background: #b8b8bf;
+  border-radius: 1px;
+}
+
+.drop-indicator {
+  height: 0;
+  border-top: 3px solid #0071e3;
+}
+
+.drop-indicator.in-card {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
+.control-panel {
+  box-sizing: border-box;
+  width: 100%;
+  background: #fff;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  margin-top: 8px;
+}
+
+/* 中等寬度：第二欄略寬於等分以利輸入；第四欄多留空間，英文 Start/Reset/Delete 才不換行 */
+@media (max-width: 1400px) and (min-width: 901px) {
+  .timer-card {
+    grid-template-columns:
+      minmax(0, 1fr)
+      minmax(220px, 1.6fr)
+      minmax(0, 1fr)
+      minmax(0, 1.25fr)
+      minmax(0, 1fr);
+  }
+
+  .stats-row {
+    gap: 20px;
+  }
+
+  .timer-actions {
+    gap: 4px;
+  }
+}
+
+/* 窄螢幕：改為直向堆疊，每區塊用整行寬度 */
+@media (max-width: 900px) {
+  .timer-card {
+    grid-template-columns: 1fr;
+  }
+
+  .timer-zone + .timer-zone {
+    border-left: none;
+    border-top: 1px solid #e5e5ea;
+    padding-top: 12px;
+    margin-top: 4px;
+  }
+
+  .app {
+    padding: 16px;
+  }
+
+  .stats-row {
+    gap: 40px;
+  }
+}
