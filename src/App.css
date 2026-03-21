@@ -107,6 +107,13 @@ h1 {
   cursor: pointer;
 }
 
+.add-tab-btn:disabled,
+.control-panel button:disabled {
+  background: #b9b9bf;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
 .lang-toggle-btn {
   position: fixed;
   top: 16px;

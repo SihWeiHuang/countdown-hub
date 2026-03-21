@@ -4,11 +4,14 @@ import './App.css'
 const DEFAULT_DELAY_MINUTES = 4
 const DEFAULT_DELAY_SECONDS = 40
 const EMPTY_TIME_TEXT = '--:--:--'
+const MAX_TABS = 10
+const MAX_TIMERS_PER_TAB = 20
 
 const i18n = {
   zh: {
     pageTitle: '倒數計時器',
     addTab: '+ 新增標籤',
+    addTabLimitReached: '已達標籤上限（{max}）',
     switchLang: 'EN',
     dragSort: '拖曳排序',
     timerNamePlaceholder: '計時器名稱',
@@ -26,6 +29,7 @@ const i18n = {
     startRecord: '開始時間紀錄',
     endRecord: '結束時間紀錄',
     addTimer: '新增計時器',
+    addTimerLimitReached: '此標籤已達計時器上限（{max}）',
     deleteTabTitle: '刪除標籤',
     renameTabPrompt: '標籤名稱',
     keepOneTab: '至少需要保留 1 個標籤頁。',
@@ -38,6 +42,7 @@ const i18n = {
   en: {
     pageTitle: 'Countdown Timers',
     addTab: '+ Add Tab',
+    addTabLimitReached: 'Tab limit reached ({max})',
     switchLang: '繁中',
     dragSort: 'Drag to reorder',
     timerNamePlaceholder: 'Timer name',
@@ -55,6 +60,7 @@ const i18n = {
     startRecord: 'Start time',
     endRecord: 'End time',
     addTimer: 'Add Timer',
+    addTimerLimitReached: 'Timer limit reached for this tab ({max})',
     deleteTabTitle: 'Delete tab',
     renameTabPrompt: 'Tab name',
     keepOneTab: 'At least one tab is required.',
@@ -213,6 +219,10 @@ export default function App() {
   }
 
   const addTab = () => {
+    if (tabs.length >= MAX_TABS) {
+      alert(t('addTabLimitReached', { max: MAX_TABS }))
+      return
+    }
     const id = nextTabIdRef.current++
     setTabs((prev) => [...prev, createTab(id)])
     setActiveTabId(id)
@@ -250,6 +260,9 @@ export default function App() {
     setTabs((prev) =>
       prev.map((tab) => {
         if (tab.id !== tabId) return tab
+        if (tab.timers.length >= MAX_TIMERS_PER_TAB) {
+          return tab
+        }
         const timerId = tab.nextTimerId
         return {
           ...tab,
@@ -337,6 +350,9 @@ export default function App() {
     setDragState(null)
   }
 
+  const isTabLimitReached = tabs.length >= MAX_TABS
+  const isTimerLimitReached = activeTab.timers.length >= MAX_TIMERS_PER_TAB
+
   return (
     <div className="app">
       <button
@@ -374,7 +390,14 @@ export default function App() {
             </div>
           ))}
         </div>
-        <button className="add-tab-btn" onClick={addTab}>
+        <button
+          className="add-tab-btn"
+          onClick={addTab}
+          disabled={isTabLimitReached}
+          title={
+            isTabLimitReached ? t('addTabLimitReached', { max: MAX_TABS }) : undefined
+          }
+        >
           {t('addTab')}
         </button>
       </div>
@@ -483,7 +506,17 @@ export default function App() {
       </div>
 
       <div className="control-panel">
-        <button onClick={() => addTimer(activeTab.id)}>{t('addTimer')}</button>
+        <button
+          onClick={() => addTimer(activeTab.id)}
+          disabled={isTimerLimitReached}
+          title={
+            isTimerLimitReached
+              ? t('addTimerLimitReached', { max: MAX_TIMERS_PER_TAB })
+              : undefined
+          }
+        >
+          {t('addTimer')}
+        </button>
       </div>
       </div>
 
