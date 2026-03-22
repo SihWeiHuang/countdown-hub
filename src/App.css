@@ -447,53 +447,23 @@ body.is-dragging-timer {
 }
 
 /*
- * 第四階：手機專用（小螢幕／直向）
- * 目標：縮減每張計時器卡片的垂直篇幅，仍維持可讀與可點擊
+ * 第四種斷點：手機專用（小螢幕）
+ * 僅在 max-width: 480px 生效，桌面與較寬平板（>480px）完全沿用上方規則。
+ * 目標：縮減單張計時器垂直篇幅，子區塊內盡量橫向排列。
  */
 @media (max-width: 480px) {
   .app {
-    padding: 10px 12px 16px;
-    padding-top: max(10px, env(safe-area-inset-top));
+    padding: 10px 12px;
   }
 
   h1 {
-    font-size: 18px;
-    margin-bottom: 4px;
+    font-size: 20px;
   }
 
   .tabs-bar {
     flex-wrap: wrap;
     gap: 6px;
     margin: 8px 0 10px;
-    row-gap: 8px;
-  }
-
-  .tabs {
-    gap: 4px;
-  }
-
-  .tab {
-    padding: 4px 8px;
-    max-width: 200px;
-  }
-
-  .tab-name {
-    font-size: 11px;
-    max-width: 120px;
-  }
-
-  .add-tab-btn,
-  .tabs-bar .clear-all-btn,
-  .control-panel button {
-    padding: 6px 10px;
-    font-size: 12px;
-  }
-
-  .lang-toggle-btn {
-    top: max(8px, env(safe-area-inset-top));
-    right: max(8px, env(safe-area-inset-right));
-    padding: 6px 10px;
-    font-size: 12px;
   }
 
   .timers-container {
@@ -501,68 +471,59 @@ body.is-dragging-timer {
   }
 
   .timer-card {
-    padding: 6px 8px;
-    border-radius: 8px;
+    padding: 4px 6px;
     font-size: 11px;
+    border-radius: 8px;
   }
 
   .timer-zone {
-    padding: 6px 8px;
-    gap: 6px;
+    padding: 4px 6px;
+    gap: 4px;
   }
 
   .timer-zone + .timer-zone {
-    padding-top: 8px;
+    padding-top: 6px;
     margin-top: 2px;
   }
 
-  /* 倒數設定 + 延遲設定：兩欄並排，少佔一層高度 */
+  /* 第二區：倒數設定 + 延遲設定 並排（橫向） */
   .timer-card > .timer-zone:nth-child(2) {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    align-items: start;
-    text-align: left;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 6px 8px;
   }
 
   .timer-card > .timer-zone:nth-child(2) .zone-block {
-    align-items: stretch;
+    flex: 1 1 50%;
     min-width: 0;
+    align-items: center;
   }
 
-  .timer-card > .timer-zone:nth-child(2) .label-small {
-    font-size: 10px;
-    line-height: 1.2;
+  /* 第五區：開始／結束時間紀錄 並排（橫向） */
+  .timer-card > .timer-zone:nth-child(5) {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 6px 8px;
   }
 
-  .timer-card > .timer-zone:nth-child(2) .time-input-row {
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    gap: 3px 4px;
-    font-size: 10px;
-  }
-
-  .timer-card > .timer-zone:nth-child(2) .time-input-row input {
-    width: 36px;
-    padding: 2px 3px;
-    font-size: 10px;
+  .timer-card > .timer-zone:nth-child(5) .zone-block {
+    flex: 1 1 50%;
+    min-width: 0;
+    align-items: center;
   }
 
   .zone-row {
     gap: 6px;
   }
 
-  .drag-handle {
-    width: 16px;
-    min-width: 16px;
-    height: 26px;
-    font-size: 12px;
-    border-radius: 6px;
-  }
-
-  .timer-title-input {
-    padding: 3px 6px;
-    font-size: 11px;
+  .stats-row {
+    gap: 10px;
+    justify-content: space-between;
+    width: 100%;
   }
 
   .label-small {
@@ -571,30 +532,30 @@ body.is-dragging-timer {
 
   .timer-total-display,
   .timer-display {
-    font-size: 14px;
-  }
-
-  .stats-row {
-    gap: 16px;
-    width: 100%;
-  }
-
-  .zone-block {
-    gap: 2px;
+    font-size: 13px;
   }
 
   .time-input-row {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2px 4px;
     font-size: 10px;
   }
 
   .time-input-row input {
-    width: 38px;
+    width: 34px;
     padding: 2px 3px;
     font-size: 10px;
   }
 
+  .timer-title-input {
+    padding: 3px 5px;
+    font-size: 11px;
+  }
+
   .timer-actions {
     gap: 4px;
+    justify-content: center;
   }
 
   .timer-actions button {
@@ -605,30 +566,22 @@ body.is-dragging-timer {
   .datetime-wrap {
     gap: 4px;
     font-size: 10px;
+    max-width: 100%;
   }
 
   .datetime-sep {
     height: 16px;
   }
 
-  .timer-start-at,
-  .timer-end-at {
-    font-size: 10px;
-    line-height: 1.35;
-  }
-
   .control-panel {
     padding: 10px 12px;
     margin-top: 6px;
-    border-radius: 10px;
   }
 
-  .site-footer {
-    padding-top: 12px;
-    font-size: 11px;
-  }
-
-  .drag-placeholder {
-    border-radius: 8px;
+  .drag-handle {
+    width: 16px;
+    min-width: 16px;
+    height: 26px;
+    font-size: 12px;
   }
 }
