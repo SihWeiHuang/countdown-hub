@@ -424,24 +424,162 @@ body.is-dragging-timer {
   }
 }
 
-/* 窄螢幕：改為直向堆疊，每區塊用整行寬度 */
+/* 窄螢幕：改為直向堆疊；手機專用較緊湊尺寸，減少單張卡片佔高 */
 @media (max-width: 900px) {
+  .app {
+    padding: 12px 12px 16px;
+    padding-top: max(12px, env(safe-area-inset-top));
+  }
+
+  h1 {
+    font-size: 20px;
+  }
+
+  .tabs-bar {
+    margin: 8px 0 10px;
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .tab {
+    padding: 5px 8px;
+  }
+
+  .tab-name {
+    font-size: 11px;
+    max-width: 140px;
+  }
+
+  .add-tab-btn,
+  .control-panel button,
+  .tabs-bar .clear-all-btn {
+    padding: 7px 12px;
+    font-size: 13px;
+  }
+
+  .lang-toggle-btn {
+    top: max(10px, env(safe-area-inset-top));
+    right: max(10px, env(safe-area-inset-right));
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .timers-container {
+    gap: 6px;
+  }
+
   .timer-card {
     grid-template-columns: 1fr;
+    padding: 5px 8px;
+    border-radius: 9px;
+    font-size: 11px;
+  }
+
+  .timer-zone {
+    padding: 5px 6px;
+    gap: 4px;
   }
 
   .timer-zone + .timer-zone {
     border-left: none;
     border-top: 1px solid #e5e5ea;
-    padding-top: 12px;
-    margin-top: 4px;
+    padding-top: 6px;
+    margin-top: 2px;
   }
 
-  .app {
-    padding: 16px;
+  .zone-row {
+    gap: 6px;
+  }
+
+  .zone-block {
+    gap: 2px;
   }
 
   .stats-row {
-    gap: 40px;
+    gap: 12px;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0 4px;
+  }
+
+  .label-small {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .timer-total-display,
+  .timer-display {
+    font-size: 14px;
+    line-height: 1.2;
+  }
+
+  .timer-title-input {
+    padding: 3px 6px;
+    font-size: 11px;
+    border-radius: 5px;
+  }
+
+  .time-input-row {
+    gap: 3px;
+    font-size: 10px;
+    flex-wrap: wrap;
+    row-gap: 4px;
+    justify-content: center;
+  }
+
+  .time-input-row input {
+    width: 36px;
+    padding: 2px 3px;
+    font-size: 10px;
+    border-radius: 5px;
+  }
+
+  .timer-actions {
+    gap: 5px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .timer-actions button {
+    padding: 4px 9px;
+    font-size: 10px;
+  }
+
+  .drag-handle {
+    width: 16px;
+    min-width: 16px;
+    height: 26px;
+    border-radius: 6px;
+    font-size: 12px;
+  }
+
+  .timer-start-at,
+  .timer-end-at {
+    font-size: 10px;
+    line-height: 1.25;
+  }
+
+  .datetime-wrap {
+    gap: 4px;
+  }
+
+  .datetime-sep {
+    height: 14px;
+  }
+
+  .control-panel {
+    padding: 10px 12px;
+    margin-top: 6px;
+    border-radius: 10px;
+  }
+
+  .site-footer {
+    padding-top: 14px;
+    font-size: 11px;
+  }
+
+  /* 完成狀態在手機上略減邊框，避免視覺過重 */
+  .timer-card.finished {
+    border-width: 1px;
   }
 }
