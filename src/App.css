@@ -486,19 +486,65 @@ body.is-dragging-timer {
     margin-top: 2px;
   }
 
-  /* 第二區：倒數設定 + 延遲設定 並排（橫向） */
+  /* 第二區：倒數設定 + 延遲設定 — 等寬、置中對稱、整區單行不換行 */
   .timer-card > .timer-zone:nth-child(2) {
     flex-direction: row;
     flex-wrap: nowrap;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 6px 8px;
+    align-items: stretch;
+    justify-content: center;
+    gap: 6px;
   }
 
-  .timer-card > .timer-zone:nth-child(2) .zone-block {
-    flex: 1 1 50%;
+  .timer-card > .timer-zone:nth-child(2) > .zone-block {
+    flex: 1 1 0;
     min-width: 0;
+    max-width: calc(50% - 3px);
+    display: flex;
+    flex-direction: column;
     align-items: center;
+    justify-content: flex-start;
+    gap: 2px;
+  }
+
+  /* 標題單行；過長時省略，避免折到第二行 */
+  .timer-card > .timer-zone:nth-child(2) > .zone-block .label-small {
+    white-space: nowrap;
+    font-size: 9px;
+    line-height: 1.2;
+    text-align: center;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* 兩欄輸入列皆單行 */
+  .timer-card > .timer-zone:nth-child(2) > .zone-block .time-input-row {
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0 1px;
+    width: 100%;
+    font-size: 9px;
+  }
+
+  .timer-card > .timer-zone:nth-child(2) > .zone-block .time-input-row span {
+    flex-shrink: 0;
+  }
+
+  /* 左欄：時／分／秒 — 較多欄位，輸入框略窄 */
+  .timer-card > .timer-zone:nth-child(2) > .zone-block:first-child .time-input-row input {
+    width: 25px;
+    min-width: 0;
+    padding: 1px 1px;
+    font-size: 9px;
+  }
+
+  /* 右欄：分／秒 — 欄位較少，可略寬 */
+  .timer-card > .timer-zone:nth-child(2) > .zone-block:last-child .time-input-row input {
+    width: 28px;
+    min-width: 0;
+    padding: 1px 2px;
+    font-size: 9px;
   }
 
   /* 第五區：開始／結束時間紀錄 並排（橫向） */
@@ -520,9 +566,10 @@ body.is-dragging-timer {
     gap: 6px;
   }
 
+  /* 倒數時間 / 剩餘時間：勿用 space-between（會把兩欄拉到最左最右，視覺間距過大） */
   .stats-row {
-    gap: 10px;
-    justify-content: space-between;
+    gap: 40px;
+    justify-content: center;
     width: 100%;
   }
 
@@ -554,7 +601,7 @@ body.is-dragging-timer {
   }
 
   .timer-actions {
-    gap: 4px;
+    gap: 12px;
     justify-content: center;
   }
 
@@ -582,6 +629,17 @@ body.is-dragging-timer {
     width: 16px;
     min-width: 16px;
     height: 26px;
+    font-size: 12px;
+  }
+
+  /*
+   * 手機版專用：語言切換鈕位置（桌面仍用全域 .lang-toggle-btn 的 top/right）
+   * max(..., env(safe-area-inset-*))：避免貼齊瀏海／圓角螢幕時被裁切
+   */
+  .lang-toggle-btn {
+    top: max(12px, env(safe-area-inset-top, 0px));
+    right: max(12px, env(safe-area-inset-right, 0px));
+    padding: 7px 12px;
     font-size: 12px;
   }
 }
