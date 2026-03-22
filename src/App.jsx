@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import './App.css'
 
 const DEFAULT_DELAY_MINUTES = 4
@@ -6,7 +12,70 @@ const DEFAULT_DELAY_SECONDS = 40
 const EMPTY_TIME_TEXT = '--:--:--'
 const MAX_TABS = 10
 const MAX_TIMERS_PER_TAB = 20
+/** 標籤名稱字數上限（與頂部 tab 膠囊寬度相符，超出僅截斷、不提示） */
+const MAX_TAB_NAME_LENGTH = 20
+/** 計時器名稱字數上限 */
+const MAX_TIMER_NAME_LENGTH = 20
 const STORAGE_KEY = 'countdown-hub.state.v1'
+
+function clampStringLen(str, maxLen) {
+  if (typeof str !== 'string') return ''
+  return str.length > maxLen ? str.slice(0, maxLen) : str
+}
+
+/** 與手機版 CSS 斷點一致：此寬度以下計時器名稱僅單行 */
+const MOBILE_TIMER_TITLE_MQ = '(max-width: 480px)'
+
+function normalizeTimerNameNewlines(raw, allowMultiline) {
+  let s = typeof raw === 'string' ? raw : ''
+  s = s.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  if (!allowMultiline) {
+    return s.replace(/\n/g, '')
+  }
+  const first = s.indexOf('\n')
+  if (first === -1) return s
+  const second = s.indexOf('\n', first + 1)
+  if (second === -1) return s
+  return s.slice(0, second)
+}
+
+function clampTimerName(raw, allowMultiline) {
+  return clampStringLen(
+    normalizeTimerNameNewlines(raw, allowMultiline),
+    MAX_TIMER_NAME_LENGTH,
+  )
+}
+
+function adjustTimerTitleTextareaHeight(el) {
+  if (!el || el.tagName !== 'TEXTAREA') return
+  const cs = getComputedStyle(el)
+  const lh = parseFloat(cs.lineHeight)
+  const lineHeight = Number.isFinite(lh) ? lh : 16.2
+  const pt = parseFloat(cs.paddingTop) || 0
+  const pb = parseFloat(cs.paddingBottom) || 0
+  const maxH = lineHeight * 2 + pt + pb
+  el.style.height = 'auto'
+  const h = Math.min(el.scrollHeight, maxH)
+  el.style.height = `${h}px`
+  el.style.overflowY = el.scrollHeight > maxH ? 'auto' : 'hidden'
+}
+
+function useMatchMedia(query) {
+  const [matches, setMatches] = useState(
+    () =>
+      typeof window !== 'undefined'
+        ? window.matchMedia(query).matches
+        : false,
+  )
+  useEffect(() => {
+    const mq = window.matchMedia(query)
+    const fn = () => setMatches(mq.matches)
+    fn()
+    mq.addEventListener('change', fn)
+    return () => mq.removeEventListener('change', fn)
+  }, [query])
+  return matches
+}
 
 const i18n = {
   zh: {
@@ -36,6 +105,8 @@ const i18n = {
     clearAllDone: '已清空所有標籤與計時器。',
     deleteTabTitle: '刪除標籤',
     renameTabPrompt: '標籤名稱',
+    renameTabSave: '確定',
+    renameTabCancel: '取消',
     keepOneTab: '至少需要保留 1 個標籤頁。',
     deleteTabConfirmWithTimers: '刪除標籤「{name}」以及其中所有計時器？',
     deleteTabConfirmEmpty: '刪除標籤「{name}」？',
@@ -70,6 +141,8 @@ const i18n = {
     clearAllDone: 'All tabs and timers have been cleared.',
     deleteTabTitle: 'Delete tab',
     renameTabPrompt: 'Tab name',
+    renameTabSave: 'OK',
+    renameTabCancel: 'Cancel',
     keepOneTab: 'At least one tab is required.',
     deleteTabConfirmWithTimers: 'Delete tab "{name}" and all timers in it?',
     deleteTabConfirmEmpty: 'Delete tab "{name}"?',
@@ -175,7 +248,10 @@ function loadPersistedState() {
             ...createTimer(timerId),
             ...tm,
             id: timerId,
-            name: typeof tm.name === 'string' ? tm.name : '',
+            name: clampTimerName(
+              typeof tm.name === 'string' ? tm.name : '',
+              true,
+            ),
             baseH,
             baseM,
             baseS,
@@ -193,7 +269,12 @@ function loadPersistedState() {
         const maxTimerId = timers.reduce((max, tm) => Math.max(max, tm.id), 0)
         return {
           id: tabId,
-          name: typeof tab.name === 'string' && tab.name.trim() ? tab.name : `tab ${tabId}`,
+          name: clampStringLen(
+            typeof tab.name === 'string' && tab.name.trim()
+              ? tab.name.trim()
+              : `tab ${tabId}`,
+            MAX_TAB_NAME_LENGTH,
+          ),
           timers,
           nextTimerId:
             Number(tab.nextTimerId) > maxTimerId
@@ -216,11 +297,15 @@ export default function App() {
   const [language, setLanguage] = useState(initialState.language)
   const [tabs, setTabs] = useState(initialState.tabs)
   const [activeTabId, setActiveTabId] = useState(initialState.activeTabId)
+  /** 原生 prompt 無法 maxLength，改用自訂對話框才能鎖字數 */
+  const [renameTabDialog, setRenameTabDialog] = useState(null)
   const activeContainerRef = useRef(null)
   const dragRuntimeRef = useRef(null)
   const nextTabIdRef = useRef(
     Math.max(2, ...initialState.tabs.map((tab) => Number(tab.id) + 1)),
   )
+  const isMobileTimerTitle = useMatchMedia(MOBILE_TIMER_TITLE_MQ)
+  const timerTitleTextareaRefs = useRef(new Map())
 
   const t = (key, vars = {}) => {
     const text = (i18n[language] && i18n[language][key]) || key
@@ -273,6 +358,13 @@ export default function App() {
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
   }, [language, tabs, activeTabId])
+
+  useLayoutEffect(() => {
+    if (isMobileTimerTitle) return
+    timerTitleTextareaRefs.current.forEach((el) => {
+      if (el?.isConnected) adjustTimerTitleTextareaHeight(el)
+    })
+  }, [activeTab.timers, isMobileTimerTitle, language])
 
   const updateTimer = (tabId, timerId, updater) => {
     setTabs((prev) =>
@@ -328,14 +420,29 @@ export default function App() {
     setActiveTabId(id)
   }
 
-  const renameTab = (tab) => {
-    const next = prompt(t('renameTabPrompt'), tab.name)
-    if (next === null) return
-    const cleaned = next.trim()
-    if (!cleaned) return
-    setTabs((prev) =>
-      prev.map((tb) => (tb.id === tab.id ? { ...tb, name: cleaned } : tb)),
+  const openRenameTab = (tab) => {
+    setRenameTabDialog({
+      tabId: tab.id,
+      value: clampStringLen(tab.name, MAX_TAB_NAME_LENGTH),
+    })
+  }
+
+  const confirmRenameTab = () => {
+    if (!renameTabDialog) return
+    const cleaned = clampStringLen(
+      renameTabDialog.value.trim(),
+      MAX_TAB_NAME_LENGTH,
     )
+    if (!cleaned) {
+      setRenameTabDialog(null)
+      return
+    }
+    setTabs((prev) =>
+      prev.map((tb) =>
+        tb.id === renameTabDialog.tabId ? { ...tb, name: cleaned } : tb,
+      ),
+    )
+    setRenameTabDialog(null)
   }
 
   const deleteTab = (tab) => {
@@ -612,7 +719,7 @@ export default function App() {
               className={`tab ${tab.id === activeTabId ? 'active' : ''}`}
               onClick={() => setActiveTabId(tab.id)}
             >
-              <span className="tab-name" onDoubleClick={() => renameTab(tab)}>
+              <span className="tab-name" onDoubleClick={() => openRenameTab(tab)}>
                 {tab.name}
               </span>
               <button
@@ -659,14 +766,61 @@ export default function App() {
                 >
                   ⋮⋮
                 </div>
-                <input
-                  className="timer-title-input"
-                  placeholder={t('timerNamePlaceholder')}
-                  value={tm.name}
-                  onChange={(e) =>
-                    updateTimer(activeTab.id, tm.id, (cur) => ({ ...cur, name: e.target.value }))
-                  }
-                />
+                {isMobileTimerTitle ? (
+                  <input
+                    type="text"
+                    className="timer-title-input timer-title-input--mobile"
+                    placeholder={t('timerNamePlaceholder')}
+                    value={clampTimerName(tm.name, false)}
+                    maxLength={MAX_TIMER_NAME_LENGTH}
+                    spellCheck={false}
+                    onChange={(e) =>
+                      updateTimer(activeTab.id, tm.id, (cur) => ({
+                        ...cur,
+                        name: clampTimerName(e.target.value, false),
+                      }))
+                    }
+                  />
+                ) : (
+                  <textarea
+                    className="timer-title-input timer-title-input--desktop"
+                    placeholder={t('timerNamePlaceholder')}
+                    value={tm.name}
+                    maxLength={MAX_TIMER_NAME_LENGTH}
+                    rows={1}
+                    spellCheck={false}
+                    ref={(el) => {
+                      if (el) {
+                        timerTitleTextareaRefs.current.set(tm.id, el)
+                        requestAnimationFrame(() =>
+                          adjustTimerTitleTextareaHeight(el),
+                        )
+                      } else {
+                        timerTitleTextareaRefs.current.delete(tm.id)
+                      }
+                    }}
+                    onChange={(e) => {
+                      const v = clampTimerName(e.target.value, true)
+                      updateTimer(activeTab.id, tm.id, (cur) => ({
+                        ...cur,
+                        name: v,
+                      }))
+                      requestAnimationFrame(() =>
+                        adjustTimerTitleTextareaHeight(e.target),
+                      )
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key !== 'Enter') return
+                      if (!e.shiftKey) {
+                        e.preventDefault()
+                        return
+                      }
+                      if (e.currentTarget.value.includes('\n')) {
+                        e.preventDefault()
+                      }
+                    }}
+                  />
+                )}
               </div>
             </div>
 
@@ -754,6 +908,65 @@ export default function App() {
         {t('footerPlaceholder')}
       </footer>
       </div>
+
+      {renameTabDialog && (
+        <div className="rename-tab-backdrop">
+          <div
+            className="rename-tab-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rename-tab-heading"
+          >
+            <h2 id="rename-tab-heading" className="rename-tab-title">
+              {t('renameTabPrompt')}
+            </h2>
+            <input
+              id="rename-tab-input"
+              className="rename-tab-input"
+              type="text"
+              value={renameTabDialog.value}
+              maxLength={MAX_TAB_NAME_LENGTH}
+              autoComplete="off"
+              autoFocus
+              onChange={(e) =>
+                setRenameTabDialog((s) =>
+                  s
+                    ? {
+                        ...s,
+                        value: clampStringLen(
+                          e.target.value,
+                          MAX_TAB_NAME_LENGTH,
+                        ),
+                      }
+                    : s,
+                )
+              }
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  confirmRenameTab()
+                }
+              }}
+            />
+            <div className="rename-tab-actions">
+              <button
+                type="button"
+                className="rename-tab-btn rename-tab-btn-primary"
+                onClick={confirmRenameTab}
+              >
+                {t('renameTabSave')}
+              </button>
+              <button
+                type="button"
+                className="rename-tab-btn"
+                onClick={() => setRenameTabDialog(null)}
+              >
+                {t('renameTabCancel')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
