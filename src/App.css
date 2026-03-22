@@ -424,43 +424,75 @@ body.is-dragging-timer {
   }
 }
 
-/* 窄螢幕：改為直向堆疊；手機專用較緊湊尺寸，減少單張卡片佔高 */
+/* 窄螢幕：改為直向堆疊，每區塊用整行寬度 */
 @media (max-width: 900px) {
+  .timer-card {
+    grid-template-columns: 1fr;
+  }
+
+  .timer-zone + .timer-zone {
+    border-left: none;
+    border-top: 1px solid #e5e5ea;
+    padding-top: 12px;
+    margin-top: 4px;
+  }
+
   .app {
-    padding: 12px 12px 16px;
-    padding-top: max(12px, env(safe-area-inset-top));
+    padding: 16px;
+  }
+
+  .stats-row {
+    gap: 40px;
+  }
+}
+
+/*
+ * 第四階：手機專用（小螢幕／直向）
+ * 目標：縮減每張計時器卡片的垂直篇幅，仍維持可讀與可點擊
+ */
+@media (max-width: 480px) {
+  .app {
+    padding: 10px 12px 16px;
+    padding-top: max(10px, env(safe-area-inset-top));
   }
 
   h1 {
-    font-size: 20px;
+    font-size: 18px;
+    margin-bottom: 4px;
   }
 
   .tabs-bar {
-    margin: 8px 0 10px;
     flex-wrap: wrap;
-    row-gap: 6px;
+    gap: 6px;
+    margin: 8px 0 10px;
+    row-gap: 8px;
+  }
+
+  .tabs {
+    gap: 4px;
   }
 
   .tab {
-    padding: 5px 8px;
+    padding: 4px 8px;
+    max-width: 200px;
   }
 
   .tab-name {
     font-size: 11px;
-    max-width: 140px;
+    max-width: 120px;
   }
 
   .add-tab-btn,
-  .control-panel button,
-  .tabs-bar .clear-all-btn {
-    padding: 7px 12px;
-    font-size: 13px;
+  .tabs-bar .clear-all-btn,
+  .control-panel button {
+    padding: 6px 10px;
+    font-size: 12px;
   }
 
   .lang-toggle-btn {
-    top: max(10px, env(safe-area-inset-top));
-    right: max(10px, env(safe-area-inset-right));
-    padding: 6px 12px;
+    top: max(8px, env(safe-area-inset-top));
+    right: max(8px, env(safe-area-inset-right));
+    padding: 6px 10px;
     font-size: 12px;
   }
 
@@ -469,102 +501,120 @@ body.is-dragging-timer {
   }
 
   .timer-card {
-    grid-template-columns: 1fr;
-    padding: 5px 8px;
-    border-radius: 9px;
+    padding: 6px 8px;
+    border-radius: 8px;
     font-size: 11px;
   }
 
   .timer-zone {
-    padding: 5px 6px;
-    gap: 4px;
+    padding: 6px 8px;
+    gap: 6px;
   }
 
   .timer-zone + .timer-zone {
-    border-left: none;
-    border-top: 1px solid #e5e5ea;
-    padding-top: 6px;
+    padding-top: 8px;
     margin-top: 2px;
+  }
+
+  /* 倒數設定 + 延遲設定：兩欄並排，少佔一層高度 */
+  .timer-card > .timer-zone:nth-child(2) {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    align-items: start;
+    text-align: left;
+  }
+
+  .timer-card > .timer-zone:nth-child(2) .zone-block {
+    align-items: stretch;
+    min-width: 0;
+  }
+
+  .timer-card > .timer-zone:nth-child(2) .label-small {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .timer-card > .timer-zone:nth-child(2) .time-input-row {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 3px 4px;
+    font-size: 10px;
+  }
+
+  .timer-card > .timer-zone:nth-child(2) .time-input-row input {
+    width: 36px;
+    padding: 2px 3px;
+    font-size: 10px;
   }
 
   .zone-row {
     gap: 6px;
   }
 
-  .zone-block {
-    gap: 2px;
-  }
-
-  .stats-row {
-    gap: 12px;
-    justify-content: space-between;
-    width: 100%;
-    padding: 0 4px;
-  }
-
-  .label-small {
-    font-size: 10px;
-    line-height: 1.2;
-  }
-
-  .timer-total-display,
-  .timer-display {
-    font-size: 14px;
-    line-height: 1.2;
+  .drag-handle {
+    width: 16px;
+    min-width: 16px;
+    height: 26px;
+    font-size: 12px;
+    border-radius: 6px;
   }
 
   .timer-title-input {
     padding: 3px 6px;
     font-size: 11px;
-    border-radius: 5px;
+  }
+
+  .label-small {
+    font-size: 10px;
+  }
+
+  .timer-total-display,
+  .timer-display {
+    font-size: 14px;
+  }
+
+  .stats-row {
+    gap: 16px;
+    width: 100%;
+  }
+
+  .zone-block {
+    gap: 2px;
   }
 
   .time-input-row {
-    gap: 3px;
     font-size: 10px;
-    flex-wrap: wrap;
-    row-gap: 4px;
-    justify-content: center;
   }
 
   .time-input-row input {
-    width: 36px;
+    width: 38px;
     padding: 2px 3px;
     font-size: 10px;
-    border-radius: 5px;
   }
 
   .timer-actions {
-    gap: 5px;
-    flex-wrap: wrap;
-    justify-content: center;
+    gap: 4px;
   }
 
   .timer-actions button {
-    padding: 4px 9px;
+    padding: 4px 8px;
     font-size: 10px;
   }
 
-  .drag-handle {
-    width: 16px;
-    min-width: 16px;
-    height: 26px;
-    border-radius: 6px;
-    font-size: 12px;
+  .datetime-wrap {
+    gap: 4px;
+    font-size: 10px;
+  }
+
+  .datetime-sep {
+    height: 16px;
   }
 
   .timer-start-at,
   .timer-end-at {
     font-size: 10px;
-    line-height: 1.25;
-  }
-
-  .datetime-wrap {
-    gap: 4px;
-  }
-
-  .datetime-sep {
-    height: 14px;
+    line-height: 1.35;
   }
 
   .control-panel {
@@ -574,12 +624,11 @@ body.is-dragging-timer {
   }
 
   .site-footer {
-    padding-top: 14px;
+    padding-top: 12px;
     font-size: 11px;
   }
 
-  /* 完成狀態在手機上略減邊框，避免視覺過重 */
-  .timer-card.finished {
-    border-width: 1px;
+  .drag-placeholder {
+    border-radius: 8px;
   }
 }
