@@ -164,6 +164,9 @@ h1 {
   opacity: 0.75;
   z-index: 999;
   cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .timer-card.dragging * {
@@ -212,6 +215,15 @@ h1 {
   gap: 4px;
 }
 
+/* 拖曳進行中：避免手機長按／滑動時誤選文字（由 JS 在 body 加 class） */
+body.is-dragging-timer {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -webkit-touch-callout: none;
+}
+
 .drag-handle {
   width: 18px;
   min-width: 18px;
@@ -224,6 +236,13 @@ h1 {
   justify-content: center;
   cursor: grab;
   user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  /* iOS：長按不出現選取／系統選單 */
+  -webkit-touch-callout: none;
+  /* 觸控拖曳時不要交給瀏覽器做捲動／縮放，減少誤選 */
+  touch-action: none;
   color: #6e6e73;
   font-size: 14px;
   line-height: 1;

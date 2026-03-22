@@ -447,6 +447,8 @@ export default function App() {
     cardEl.style.top = `${cardRect.top}px`
     cardEl.style.zIndex = '999'
 
+    document.body.classList.add('is-dragging-timer')
+
     dragRuntimeRef.current = {
       tabId,
       sourceId: timerId,
@@ -490,6 +492,7 @@ export default function App() {
       rt.cardEl.style.pointerEvents = ''
       rt.placeholderEl.remove()
       rt.indicatorEl.remove()
+      document.body.classList.remove('is-dragging-timer')
       dragRuntimeRef.current = null
     }
 
@@ -514,6 +517,9 @@ export default function App() {
       const y = clientY - rt.offsetY
       rt.cardEl.style.left = `${x}px`
       rt.cardEl.style.top = `${y}px`
+
+      const sel = window.getSelection?.()
+      if (sel && sel.rangeCount > 0) sel.removeAllRanges()
 
       const afterEl = getAfterElement(rt.container, clientY)
       if (afterEl) {
