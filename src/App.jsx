@@ -155,6 +155,23 @@ const i18n = {
 const msFromParts = (h, m, s) => (h * 3600 + m * 60 + s) * 1000
 const clamp = (n, min, max) => Math.min(max, Math.max(min, n))
 
+function normalizeNonNegativeIntInput(raw) {
+  const s = String(raw ?? '').trim()
+  if (!s) return 0
+  const n = Number.parseInt(s, 10)
+  if (!Number.isFinite(n) || n < 0) return 0
+  return n
+}
+
+function normalizeEventNumberInput(event) {
+  const normalized = normalizeNonNegativeIntInput(event.target.value)
+  const normalizedText = String(normalized)
+  if (event.target.value !== normalizedText) {
+    event.target.value = normalizedText
+  }
+  return normalized
+}
+
 function formatTime(ms) {
   const totalSec = Math.max(0, Math.floor(ms / 1000))
   const h = Math.floor(totalSec / 3600)
@@ -381,33 +398,56 @@ export default function App() {
     )
   }
 
-  const validateAndRecalc = (tm) => {
+  /** 無副作用；供 state updater 使用（Strict Mode 可能重複呼叫 updater，不可在內層 alert） */
+  const validateAndRecalcPure = (tm) => {
     const h = clamp(Number(tm.baseH) || 0, 0, 999)
     const m = Number(tm.baseM) || 0
     const s = Number(tm.baseS) || 0
     const dm = Number(tm.delayM) || 0
     const ds = Number(tm.delayS) || 0
     if (m < 0 || m > 59 || s < 0 || s > 59) {
-      alert(t('invalidHms'))
-      return tm
+      return { ok: false, reason: 'hms' }
     }
     if (dm < 0 || ds < 0 || ds > 59) {
-      alert(t('invalidDelay'))
-      return tm
+      return { ok: false, reason: 'delay' }
     }
     const totalMs = msFromParts(h, m, s) + msFromParts(0, dm, ds)
     const shouldSyncRemaining = !tm.isRunning || tm.finished || tm.remainingMs <= 0
     return {
-      ...tm,
-      baseH: h,
-      baseM: m,
-      baseS: s,
-      delayM: dm,
-      delayS: ds,
-      totalMs,
-      remainingMs: shouldSyncRemaining ? totalMs : tm.remainingMs,
-      finished: false,
+      ok: true,
+      timer: {
+        ...tm,
+        baseH: h,
+        baseM: m,
+        baseS: s,
+        delayM: dm,
+        delayS: ds,
+        totalMs,
+        remainingMs: shouldSyncRemaining ? totalMs : tm.remainingMs,
+        finished: false,
+      },
     }
+  }
+
+  const applyTimeFieldChange = (tabId, timerId, fieldKey, e, prevValue) => {
+    const normalized = normalizeNonNegativeIntInput(e.target.value)
+    let invalidMsg = null
+    updateTimer(tabId, timerId, (cur) => {
+      const next = { ...cur, [fieldKey]: normalized }
+      const result = validateAndRecalcPure(next)
+      if (!result.ok) {
+        invalidMsg =
+          result.reason === 'delay' ? t('invalidDelay') : t('invalidHms')
+        return cur
+      }
+      return result.timer
+    })
+    if (invalidMsg) {
+      alert(invalidMsg)
+      e.target.value = String(prevValue)
+      return
+    }
+    normalizeEventNumberInput(e)
   }
 
   const addTab = () => {
@@ -828,20 +868,20 @@ export default function App() {
               <div className="zone-block">
                 <div className="label-small">{t('countdownSetup')}</div>
                 <div className="time-input-row">
-                  <input type="number" value={tm.baseH} onChange={(e) => updateTimer(activeTab.id, tm.id, (cur) => validateAndRecalc({ ...cur, baseH: e.target.value }))} />
+                  <input type="number" value={tm.baseH} onChange={(e) => applyTimeFieldChange(activeTab.id, tm.id, 'baseH', e, tm.baseH)} />
                   <span>{t('hour')}</span>
-                  <input type="number" value={tm.baseM} onChange={(e) => updateTimer(activeTab.id, tm.id, (cur) => validateAndRecalc({ ...cur, baseM: e.target.value }))} />
+                  <input type="number" value={tm.baseM} onChange={(e) => applyTimeFieldChange(activeTab.id, tm.id, 'baseM', e, tm.baseM)} />
                   <span>{t('minute')}</span>
-                  <input type="number" value={tm.baseS} onChange={(e) => updateTimer(activeTab.id, tm.id, (cur) => validateAndRecalc({ ...cur, baseS: e.target.value }))} />
+                  <input type="number" value={tm.baseS} onChange={(e) => applyTimeFieldChange(activeTab.id, tm.id, 'baseS', e, tm.baseS)} />
                   <span>{t('second')}</span>
                 </div>
               </div>
               <div className="zone-block">
                 <div className="label-small">{t('delaySetup')}</div>
                 <div className="time-input-row">
-                  <input type="number" value={tm.delayM} onChange={(e) => updateTimer(activeTab.id, tm.id, (cur) => validateAndRecalc({ ...cur, delayM: e.target.value }))} />
+                  <input type="number" value={tm.delayM} onChange={(e) => applyTimeFieldChange(activeTab.id, tm.id, 'delayM', e, tm.delayM)} />
                   <span>{t('minute')}</span>
-                  <input type="number" value={tm.delayS} onChange={(e) => updateTimer(activeTab.id, tm.id, (cur) => validateAndRecalc({ ...cur, delayS: e.target.value }))} />
+                  <input type="number" value={tm.delayS} onChange={(e) => applyTimeFieldChange(activeTab.id, tm.id, 'delayS', e, tm.delayS)} />
                   <span>{t('second')}</span>
                 </div>
               </div>
