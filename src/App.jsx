@@ -26,6 +26,8 @@ function clampStringLen(str, maxLen) {
 /** 與手機版 CSS 斷點一致：此寬度以下計時器名稱僅單行 */
 const MOBILE_TIMER_TITLE_MQ = '(max-width: 480px)'
 
+const NOTIFICATION_UNSUPPORTED = 'unsupported'
+
 function normalizeTimerNameNewlines(raw, allowMultiline) {
   let s = typeof raw === 'string' ? raw : ''
   s = s.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
@@ -101,6 +103,15 @@ const i18n = {
     addTimer: '新增計時器',
     addTimerLimitReached: '此標籤已達計時器上限（{max}）',
     clearAll: '清空全部',
+    enableNotifications: '啟用通知',
+    disableNotifications: '關閉通知',
+    notificationsOn: '通知已啟用',
+    notificationsOff: '通知已關閉',
+    notificationsBlocked: '通知已封鎖',
+    notificationsUnsupported: '此瀏覽器不支援通知',
+    notificationPermissionDenied: '通知權限已封鎖，請到瀏覽器設定開啟。',
+    timerFinishedTitle: '計時完成',
+    timerFinishedBody: '「{name}」已完成（標籤：{tab}）',
     clearAllConfirm: '確定要清空所有標籤與計時器資料嗎？此動作無法復原。',
     clearAllDone: '已清空所有標籤與計時器。',
     deleteTabTitle: '刪除標籤',
@@ -137,6 +148,15 @@ const i18n = {
     addTimer: 'Add Timer',
     addTimerLimitReached: 'Timer limit reached for this tab ({max})',
     clearAll: 'Clear All',
+    enableNotifications: 'Enable Notifications',
+    disableNotifications: 'Disable Notifications',
+    notificationsOn: 'Notifications On',
+    notificationsOff: 'Notifications Off',
+    notificationsBlocked: 'Notifications Blocked',
+    notificationsUnsupported: 'Notifications Unsupported',
+    notificationPermissionDenied: 'Notification permission is blocked in browser settings.',
+    timerFinishedTitle: 'Timer finished',
+    timerFinishedBody: '"{name}" is done (tab: {tab})',
     clearAllConfirm: 'Clear all tabs and timers? This cannot be undone.',
     clearAllDone: 'All tabs and timers have been cleared.',
     deleteTabTitle: 'Delete tab',
@@ -228,6 +248,11 @@ function createTab(id) {
   return { id, name: `tab ${id}`, timers: [], nextTimerId: 1 }
 }
 
+function makeFinishedNotifyKey(tabId, timerId, endedAt) {
+  const ts = endedAt ? new Date(endedAt).getTime() : 0
+  return `${tabId}:${timerId}:${ts}`
+}
+
 function parseDateOrNull(value) {
   if (!value) return null
   const date = new Date(value)
@@ -239,12 +264,14 @@ function loadPersistedState() {
     language: 'zh',
     tabs: [createTab(1)],
     activeTabId: 1,
+    notificationEnabled: false,
   }
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return fallback
     const parsed = JSON.parse(raw)
     const language = parsed.language === 'en' ? 'en' : 'zh'
+    const notificationEnabled = Boolean(parsed.notificationEnabled)
     const inputTabs = Array.isArray(parsed.tabs) ? parsed.tabs : []
     const normalizedTabs = inputTabs
       .slice(0, MAX_TABS)
@@ -303,7 +330,7 @@ function loadPersistedState() {
     const activeTabId = tabs.some((tab) => tab.id === parsed.activeTabId)
       ? parsed.activeTabId
       : tabs[0].id
-    return { language, tabs, activeTabId }
+    return { language, tabs, activeTabId, notificationEnabled }
   } catch {
     return fallback
   }
@@ -314,6 +341,9 @@ export default function App() {
   const [language, setLanguage] = useState(initialState.language)
   const [tabs, setTabs] = useState(initialState.tabs)
   const [activeTabId, setActiveTabId] = useState(initialState.activeTabId)
+  const [notificationEnabled, setNotificationEnabled] = useState(
+    initialState.notificationEnabled,
+  )
   /** 原生 prompt 無法 maxLength，改用自訂對話框才能鎖字數 */
   const [renameTabDialog, setRenameTabDialog] = useState(null)
   const activeContainerRef = useRef(null)
@@ -323,6 +353,21 @@ export default function App() {
   )
   const isMobileTimerTitle = useMatchMedia(MOBILE_TIMER_TITLE_MQ)
   const timerTitleTextareaRefs = useRef(new Map())
+  const notifiedFinishedKeysRef = useRef(
+    new Set(
+      initialState.tabs.flatMap((tab) =>
+        tab.timers
+          .filter((tm) => tm.finished && tm.endedAt)
+          .map((tm) => makeFinishedNotifyKey(tab.id, tm.id, tm.endedAt)),
+      ),
+    ),
+  )
+  const [notificationPermission, setNotificationPermission] = useState(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      return NOTIFICATION_UNSUPPORTED
+    }
+    return Notification.permission
+  })
 
   const t = (key, vars = {}) => {
     const text = (i18n[language] && i18n[language][key]) || key
@@ -364,6 +409,7 @@ export default function App() {
     const data = {
       language,
       activeTabId,
+      notificationEnabled,
       tabs: tabs.map((tab) => ({
         ...tab,
         timers: tab.timers.map((tm) => ({
@@ -374,7 +420,23 @@ export default function App() {
       })),
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-  }, [language, tabs, activeTabId])
+  }, [language, tabs, activeTabId, notificationEnabled])
+
+  useEffect(() => {
+    if (notificationPermission !== 'granted' || !notificationEnabled) return
+    tabs.forEach((tab) => {
+      tab.timers.forEach((tm) => {
+        if (!tm.finished || !tm.endedAt) return
+        const key = makeFinishedNotifyKey(tab.id, tm.id, tm.endedAt)
+        if (notifiedFinishedKeysRef.current.has(key)) return
+        notifiedFinishedKeysRef.current.add(key)
+        const timerName = tm.name?.trim() ? tm.name.trim() : `#${tm.id}`
+        new Notification(t('timerFinishedTitle'), {
+          body: t('timerFinishedBody', { name: timerName, tab: tab.name }),
+        })
+      })
+    })
+  }, [tabs, notificationPermission, notificationEnabled, language])
 
   useLayoutEffect(() => {
     if (isMobileTimerTitle) return
@@ -735,6 +797,32 @@ export default function App() {
     alert(t('clearAllDone'))
   }
 
+  const requestNotificationPermission = async () => {
+    if (notificationPermission === NOTIFICATION_UNSUPPORTED) {
+      alert(t('notificationsUnsupported'))
+      return
+    }
+    if (notificationEnabled) {
+      setNotificationEnabled(false)
+      return
+    }
+    if (notificationPermission === 'granted') {
+      setNotificationEnabled(true)
+      return
+    }
+    if (notificationPermission === 'denied') {
+      alert(t('notificationPermissionDenied'))
+      return
+    }
+    const result = await Notification.requestPermission()
+    setNotificationPermission(result)
+    if (result === 'denied') {
+      alert(t('notificationPermissionDenied'))
+      return
+    }
+    if (result === 'granted') setNotificationEnabled(true)
+  }
+
   const isTabLimitReached = tabs.length >= MAX_TABS
   const isTimerLimitReached = activeTab.timers.length >= MAX_TIMERS_PER_TAB
 
@@ -788,6 +876,47 @@ export default function App() {
         <button className="clear-all-btn" onClick={clearAllData}>
           {t('clearAll')}
         </button>
+        <button
+          className="clear-all-btn"
+          onClick={requestNotificationPermission}
+          title={
+            notificationPermission === 'denied'
+                ? t('notificationsBlocked')
+                : notificationPermission === NOTIFICATION_UNSUPPORTED
+                  ? t('notificationsUnsupported')
+                  : notificationEnabled
+                    ? t('notificationsOn')
+                    : t('notificationsOff')
+          }
+        >
+          {notificationPermission === NOTIFICATION_UNSUPPORTED
+            ? t('notificationsUnsupported')
+            : notificationEnabled
+              ? t('disableNotifications')
+              : t('enableNotifications')}
+        </button>
+        <span
+          className="label-small"
+          title={
+            notificationPermission === 'granted'
+              ? t('notificationsOn')
+              : notificationPermission === 'denied'
+                ? t('notificationsBlocked')
+                : notificationPermission === NOTIFICATION_UNSUPPORTED
+                  ? t('notificationsUnsupported')
+                  : undefined
+          }
+        >
+          {notificationPermission === 'granted'
+            ? notificationEnabled
+              ? t('notificationsOn')
+              : t('notificationsOff')
+            : notificationPermission === 'denied'
+              ? t('notificationsBlocked')
+              : notificationPermission === NOTIFICATION_UNSUPPORTED
+                ? t('notificationsUnsupported')
+                : t('notificationsOff')}
+        </span>
       </div>
 
       <div className="timers-container" ref={activeContainerRef}>
