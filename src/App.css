@@ -351,6 +351,12 @@ body.is-dragging-timer {
   background: #ff9f0a;
 }
 
+.btn-start:disabled {
+  background: #c7c7cc;
+  color: #8e8e93;
+  cursor: not-allowed;
+}
+
 .btn-reset {
   background: #e5e5ea;
 }

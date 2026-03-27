@@ -121,6 +121,8 @@ const i18n = {
     keepOneTab: '至少需要保留 1 個標籤頁。',
     deleteTabConfirmWithTimers: '刪除標籤「{name}」以及其中所有計時器？',
     deleteTabConfirmEmpty: '刪除標籤「{name}」？',
+    deleteTimerConfirm: '刪除計時器「{name}」？',
+    deleteTimerConfirmUnnamed: '刪除此計時器？',
     invalidHms: '請輸入正確的時、分、秒（分/秒 0–59）',
     invalidDelay: '請輸入正確的延遲分、秒（秒 0–59）',
     footerPlaceholder: '關於 · 贊助 · 隱私權',
@@ -166,6 +168,8 @@ const i18n = {
     keepOneTab: 'At least one tab is required.',
     deleteTabConfirmWithTimers: 'Delete tab "{name}" and all timers in it?',
     deleteTabConfirmEmpty: 'Delete tab "{name}"?',
+    deleteTimerConfirm: 'Delete timer "{name}"?',
+    deleteTimerConfirmUnnamed: 'Delete this timer?',
     invalidHms: 'Enter valid hour/minute/second (minute/second 0–59).',
     invalidDelay: 'Enter valid delay minute/second (second 0–59).',
     footerPlaceholder: 'About · Donate · Privacy',
@@ -502,6 +506,17 @@ export default function App() {
           result.reason === 'delay' ? t('invalidDelay') : t('invalidHms')
         return cur
       }
+      if (cur.isRunning) {
+        return {
+          ...result.timer,
+          isRunning: false,
+          remainingMs: result.timer.totalMs,
+          startedAt: null,
+          endedAt: null,
+          endAtEpoch: null,
+          finished: false,
+        }
+      }
       return result.timer
     })
     if (invalidMsg) {
@@ -583,6 +598,13 @@ export default function App() {
   }
 
   const removeTimer = (tabId, timerId) => {
+    const timer = activeTab.timers.find((tm) => tm.id === timerId)
+    const ok = confirm(
+      timer?.name?.trim()
+        ? t('deleteTimerConfirm', { name: timer.name.trim() })
+        : t('deleteTimerConfirmUnnamed'),
+    )
+    if (!ok) return
     setTabs((prev) =>
       prev.map((tab) =>
         tab.id !== tabId
@@ -1031,7 +1053,7 @@ export default function App() {
 
             <div className="timer-zone">
               <div className="timer-actions">
-                <button className={`btn-start ${tm.isRunning ? 'paused' : ''}`} onClick={() => toggleStart(activeTab.id, tm.id)}>
+                <button className={`btn-start ${tm.isRunning ? 'paused' : ''}`} disabled={!tm.isRunning && tm.remainingMs <= 0} onClick={() => toggleStart(activeTab.id, tm.id)}>
                   {tm.isRunning ? t('pause') : t('start')}
                 </button>
                 <button className="btn-reset" onClick={() => resetTimer(activeTab.id, tm.id)}>
