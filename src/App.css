@@ -307,6 +307,9 @@ body.is-dragging-timer {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 16px;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  min-width: 8ch;
+  text-align: center;
 }
 
 .time-input-row {
