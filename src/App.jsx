@@ -8,7 +8,7 @@ import {
 import './App.css'
 
 const DEFAULT_DELAY_MINUTES = 4
-const DEFAULT_DELAY_SECONDS = 40
+const DEFAULT_DELAY_SECONDS = 50
 const EMPTY_TIME_TEXT = '--:--:--'
 const MAX_TABS = 10
 const MAX_TIMERS_PER_TAB = 20
@@ -257,6 +257,88 @@ function createTab(id) {
 function makeFinishedNotifyKey(tabId, timerId, endedAt) {
   const ts = endedAt ? new Date(endedAt).getTime() : 0
   return `${tabId}:${timerId}:${ts}`
+}
+
+function getNotificationUi(permission, enabled, t) {
+  const buttonLabel =
+    permission === NOTIFICATION_UNSUPPORTED
+      ? t('notificationsUnsupported')
+      : enabled
+        ? t('disableNotifications')
+        : t('enableNotifications')
+  const buttonTitle =
+    permission === 'denied'
+      ? t('notificationsBlocked')
+      : permission === NOTIFICATION_UNSUPPORTED
+        ? t('notificationsUnsupported')
+        : enabled
+          ? t('notificationsOn')
+          : t('notificationsOff')
+  const statusLabel =
+    permission === 'granted'
+      ? enabled
+        ? t('notificationsOn')
+        : t('notificationsOff')
+      : permission === 'denied'
+        ? t('notificationsBlocked')
+        : permission === NOTIFICATION_UNSUPPORTED
+          ? t('notificationsUnsupported')
+          : t('notificationsOff')
+  const statusTitle =
+    permission === 'granted'
+      ? t('notificationsOn')
+      : permission === 'denied'
+        ? t('notificationsBlocked')
+        : permission === NOTIFICATION_UNSUPPORTED
+          ? t('notificationsUnsupported')
+          : undefined
+  return { buttonLabel, buttonTitle, statusLabel, statusTitle }
+}
+
+function TabPill({
+  tab,
+  isActive,
+  onActivate,
+  onRename,
+  onDelete,
+  deleteTitle,
+}) {
+  return (
+    <div
+      className={`tab ${isActive ? 'active' : ''}`}
+      onClick={onActivate}
+    >
+      <span className="tab-name" onDoubleClick={onRename}>
+        {tab.name}
+      </span>
+      <button
+        type="button"
+        className="tab-close"
+        title={deleteTitle}
+        onClick={onDelete}
+      >
+        ×
+      </button>
+    </div>
+  )
+}
+
+function ToolbarSortClear({ onSort, onClearAll, sortDisabled, sortLabel, clearLabel }) {
+  return (
+    <>
+      <button
+        type="button"
+        className="sort-remaining-btn toolbar-sort-btn"
+        onClick={onSort}
+        disabled={sortDisabled}
+      >
+        {sortLabel}
+      </button>
+      <button type="button" className="toolbar-clear-all-btn" onClick={onClearAll}>
+        {clearLabel}
+      </button>
+    </>
+  )
 }
 
 function parseDateOrNull(value) {
@@ -640,7 +722,7 @@ export default function App() {
     updateTimer(tabId, timerId, (tm) => {
       const dm = Number(tm.delayM) || 0
       const ds = Number(tm.delayS) || 0
-      const totalMs = msFromParts(0, 0, 0) + msFromParts(0, dm, ds)
+      const totalMs = msFromParts(0, dm, ds)
       return {
         ...tm,
         baseH: 0,
@@ -873,161 +955,116 @@ export default function App() {
 
   const tabsFirstRow = tabs.slice(0, 5)
   const tabsOverflowRows = tabs.slice(5)
-
-  const toolbarSortClear = (
-    <>
-      <button
-        type="button"
-        className="sort-remaining-btn toolbar-sort-btn"
-        onClick={() => sortTimersByRemaining(activeTab.id)}
-        disabled={activeTab.timers.length <= 1}
-      >
-        {t('sortByRemaining')}
-      </button>
-      <button type="button" className="toolbar-clear-all-btn" onClick={clearAllData}>
-        {t('clearAll')}
-      </button>
-    </>
+  const notifUi = getNotificationUi(
+    notificationPermission,
+    notificationEnabled,
+    t,
   )
+  const deleteTabTitle = t('deleteTabTitle')
+  const sortClearToolbarProps = {
+    onSort: () => sortTimersByRemaining(activeTab.id),
+    onClearAll: clearAllData,
+    sortDisabled: activeTab.timers.length <= 1,
+    sortLabel: t('sortByRemaining'),
+    clearLabel: t('clearAll'),
+  }
 
   return (
     <div className="app">
       <div className="app-shell">
-      <div className="app-main">
-      <header className="app-top-bar">
-        <h1>{t('pageTitle')}</h1>
-        <div className="app-top-bar-actions">
-          <button
-            type="button"
-            className="notification-toggle-btn"
-            onClick={requestNotificationPermission}
-            title={
-              notificationPermission === 'denied'
-                ? t('notificationsBlocked')
-                : notificationPermission === NOTIFICATION_UNSUPPORTED
-                  ? t('notificationsUnsupported')
-                  : notificationEnabled
-                    ? t('notificationsOn')
-                    : t('notificationsOff')
-            }
-          >
-            {notificationPermission === NOTIFICATION_UNSUPPORTED
-              ? t('notificationsUnsupported')
-              : notificationEnabled
-                ? t('disableNotifications')
-                : t('enableNotifications')}
-          </button>
-          <span
-            className="label-small notification-status"
-            title={
-              notificationPermission === 'granted'
-                ? t('notificationsOn')
-                : notificationPermission === 'denied'
-                  ? t('notificationsBlocked')
-                  : notificationPermission === NOTIFICATION_UNSUPPORTED
-                    ? t('notificationsUnsupported')
-                    : undefined
-            }
-          >
-            {notificationPermission === 'granted'
-              ? notificationEnabled
-                ? t('notificationsOn')
-                : t('notificationsOff')
-              : notificationPermission === 'denied'
-                ? t('notificationsBlocked')
-                : notificationPermission === NOTIFICATION_UNSUPPORTED
-                  ? t('notificationsUnsupported')
-                  : t('notificationsOff')}
-          </span>
-          <button
-            type="button"
-            className="lang-toggle-btn"
-            onClick={() => setLanguage((l) => (l === 'zh' ? 'en' : 'zh'))}
-          >
-            {t('switchLang')}
-          </button>
-        </div>
-      </header>
-
-      <div className="app-toolbar">
-        <div className="app-toolbar-inner">
-          <div className="tabs-row-add">
-            <button
-              type="button"
-              className="add-tab-btn"
-              onClick={addTab}
-              disabled={isTabLimitReached}
-              title={
-                isTabLimitReached ? t('addTabLimitReached', { max: MAX_TABS }) : undefined
-              }
-            >
-              {t('addTab')}
-            </button>
-          </div>
-
-          <div className="tabs-row-secondary tabs-row-with-actions">
-            <div className="tabs tabs-chunk">
-              {tabsFirstRow.map((tab) => (
-                <div
-                  key={tab.id}
-                  className={`tab ${tab.id === activeTabId ? 'active' : ''}`}
-                  onClick={() => setActiveTabId(tab.id)}
-                >
-                  <span className="tab-name" onDoubleClick={() => openRenameTab(tab)}>
-                    {tab.name}
-                  </span>
-                  <button
-                    type="button"
-                    className="tab-close"
-                    title={t('deleteTabTitle')}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      deleteTab(tab)
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+        <div className="app-main">
+          <header className="app-top-bar">
+            <h1>{t('pageTitle')}</h1>
+            <div className="app-top-bar-actions">
+              <button
+                type="button"
+                className="notification-toggle-btn"
+                onClick={requestNotificationPermission}
+                title={notifUi.buttonTitle}
+              >
+                {notifUi.buttonLabel}
+              </button>
+              <span
+                className="label-small notification-status"
+                title={notifUi.statusTitle}
+              >
+                {notifUi.statusLabel}
+              </span>
+              <button
+                type="button"
+                className="lang-toggle-btn"
+                onClick={() => setLanguage((l) => (l === 'zh' ? 'en' : 'zh'))}
+              >
+                {t('switchLang')}
+              </button>
             </div>
-            {tabs.length <= 5 && (
-              <div className="tabs-row-actions">{toolbarSortClear}</div>
-            )}
-          </div>
+          </header>
 
-          {tabs.length > 5 && (
-            <div className="tabs-row-overflow tabs-row-with-actions">
-              <div className="tabs tabs-chunk">
-                {tabsOverflowRows.map((tab) => (
-                  <div
-                    key={tab.id}
-                    className={`tab ${tab.id === activeTabId ? 'active' : ''}`}
-                    onClick={() => setActiveTabId(tab.id)}
-                  >
-                    <span className="tab-name" onDoubleClick={() => openRenameTab(tab)}>
-                      {tab.name}
-                    </span>
-                    <button
-                      type="button"
-                      className="tab-close"
-                      title={t('deleteTabTitle')}
-                      onClick={(e) => {
+          <div className="app-toolbar">
+            <div className="app-toolbar-inner">
+              <div className="tabs-row-add">
+                <button
+                  type="button"
+                  className="add-tab-btn"
+                  onClick={addTab}
+                  disabled={isTabLimitReached}
+                  title={
+                    isTabLimitReached
+                      ? t('addTabLimitReached', { max: MAX_TABS })
+                      : undefined
+                  }
+                >
+                  {t('addTab')}
+                </button>
+              </div>
+
+              <div className="tabs-row-secondary tabs-row-with-actions">
+                <div className="tabs tabs-chunk">
+                  {tabsFirstRow.map((tab) => (
+                    <TabPill
+                      key={tab.id}
+                      tab={tab}
+                      isActive={tab.id === activeTabId}
+                      onActivate={() => setActiveTabId(tab.id)}
+                      onRename={() => openRenameTab(tab)}
+                      onDelete={(e) => {
                         e.stopPropagation()
                         deleteTab(tab)
                       }}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
+                      deleteTitle={deleteTabTitle}
+                    />
+                  ))}
+                </div>
+                {tabs.length <= 5 && (
+                  <ToolbarSortClear {...sortClearToolbarProps} />
+                )}
               </div>
-              <div className="tabs-row-actions">{toolbarSortClear}</div>
-            </div>
-          )}
-        </div>
-      </div>
 
-      <div className="timers-container" ref={activeContainerRef}>
+              {tabs.length > 5 && (
+                <div className="tabs-row-overflow tabs-row-with-actions">
+                  <div className="tabs tabs-chunk">
+                    {tabsOverflowRows.map((tab) => (
+                      <TabPill
+                        key={tab.id}
+                        tab={tab}
+                        isActive={tab.id === activeTabId}
+                        onActivate={() => setActiveTabId(tab.id)}
+                        onRename={() => openRenameTab(tab)}
+                        onDelete={(e) => {
+                          e.stopPropagation()
+                          deleteTab(tab)
+                        }}
+                        deleteTitle={deleteTabTitle}
+                      />
+                    ))}
+                  </div>
+                  <ToolbarSortClear {...sortClearToolbarProps} />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="timers-container" ref={activeContainerRef}>
         {activeTab.timers.map((tm) => (
           <div
             key={tm.id}
@@ -1174,24 +1211,25 @@ export default function App() {
         ))}
       </div>
 
-      <div className="control-panel">
-        <button
-          onClick={() => addTimer(activeTab.id)}
-          disabled={isTimerLimitReached}
-          title={
-            isTimerLimitReached
-              ? t('addTimerLimitReached', { max: MAX_TIMERS_PER_TAB })
-              : undefined
-          }
-        >
-          {t('addTimer')}
-        </button>
-      </div>
-      </div>
+          <div className="control-panel">
+            <button
+              type="button"
+              onClick={() => addTimer(activeTab.id)}
+              disabled={isTimerLimitReached}
+              title={
+                isTimerLimitReached
+                  ? t('addTimerLimitReached', { max: MAX_TIMERS_PER_TAB })
+                  : undefined
+              }
+            >
+              {t('addTimer')}
+            </button>
+          </div>
+        </div>
 
-      <footer className="site-footer" role="contentinfo">
-        {t('footerPlaceholder')}
-      </footer>
+        <footer className="site-footer" role="contentinfo">
+          {t('footerPlaceholder')}
+        </footer>
       </div>
 
       {renameTabDialog && (

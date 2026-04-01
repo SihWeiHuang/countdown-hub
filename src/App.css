@@ -155,10 +155,6 @@ h1 {
   z-index: 1;
 }
 
-.tabs-row-actions {
-  display: contents;
-}
-
 .tabs {
   display: flex;
   align-items: center;
