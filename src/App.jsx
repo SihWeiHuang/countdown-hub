@@ -102,6 +102,7 @@ const i18n = {
     endRecord: '結束時間紀錄',
     addTimer: '新增計時器',
     addTimerLimitReached: '此標籤已達計時器上限（{max}）',
+    sortByRemaining: '依剩餘時間排序',
     clearAll: '清空全部',
     enableNotifications: '啟用通知',
     disableNotifications: '關閉通知',
@@ -149,6 +150,7 @@ const i18n = {
     endRecord: 'End time',
     addTimer: 'Add Timer',
     addTimerLimitReached: 'Timer limit reached for this tab ({max})',
+    sortByRemaining: 'Sort by Remaining',
     clearAll: 'Clear All',
     enableNotifications: 'Enable Notifications',
     disableNotifications: 'Disable Notifications',
@@ -635,15 +637,24 @@ export default function App() {
   }
 
   const resetTimer = (tabId, timerId) => {
-    updateTimer(tabId, timerId, (tm) => ({
-      ...tm,
-      isRunning: false,
-      finished: false,
-      remainingMs: tm.totalMs,
-      startedAt: null,
-      endedAt: null,
-      endAtEpoch: null,
-    }))
+    updateTimer(tabId, timerId, (tm) => {
+      const dm = Number(tm.delayM) || 0
+      const ds = Number(tm.delayS) || 0
+      const totalMs = msFromParts(0, 0, 0) + msFromParts(0, dm, ds)
+      return {
+        ...tm,
+        baseH: 0,
+        baseM: 0,
+        baseS: 0,
+        totalMs,
+        isRunning: false,
+        finished: false,
+        remainingMs: totalMs,
+        startedAt: null,
+        endedAt: null,
+        endAtEpoch: null,
+      }
+    })
   }
 
   const onPointerDownHandle = (e, tabId, timerId) => {
@@ -819,6 +830,18 @@ export default function App() {
     alert(t('clearAllDone'))
   }
 
+  const sortTimersByRemaining = (tabId) => {
+    setTabs((prev) =>
+      prev.map((tab) => {
+        if (tab.id !== tabId) return tab
+        const sorted = [...tab.timers].sort(
+          (a, b) => a.remainingMs - b.remainingMs || a.id - b.id,
+        )
+        return { ...tab, timers: sorted }
+      }),
+    )
+  }
+
   const requestNotificationPermission = async () => {
     if (notificationPermission === NOTIFICATION_UNSUPPORTED) {
       alert(t('notificationsUnsupported'))
@@ -848,97 +871,160 @@ export default function App() {
   const isTabLimitReached = tabs.length >= MAX_TABS
   const isTimerLimitReached = activeTab.timers.length >= MAX_TIMERS_PER_TAB
 
+  const tabsFirstRow = tabs.slice(0, 5)
+  const tabsOverflowRows = tabs.slice(5)
+
+  const toolbarSortClear = (
+    <>
+      <button
+        type="button"
+        className="sort-remaining-btn toolbar-sort-btn"
+        onClick={() => sortTimersByRemaining(activeTab.id)}
+        disabled={activeTab.timers.length <= 1}
+      >
+        {t('sortByRemaining')}
+      </button>
+      <button type="button" className="toolbar-clear-all-btn" onClick={clearAllData}>
+        {t('clearAll')}
+      </button>
+    </>
+  )
+
   return (
     <div className="app">
-      <button
-        className="lang-toggle-btn"
-        onClick={() => setLanguage((l) => (l === 'zh' ? 'en' : 'zh'))}
-      >
-        {t('switchLang')}
-      </button>
-
       <div className="app-shell">
       <div className="app-main">
-      <h1>{t('pageTitle')}</h1>
-
-      <div className="tabs-bar">
-        <div className="tabs">
-          {tabs.map((tab) => (
-            <div
-              key={tab.id}
-              className={`tab ${tab.id === activeTabId ? 'active' : ''}`}
-              onClick={() => setActiveTabId(tab.id)}
-            >
-              <span className="tab-name" onDoubleClick={() => openRenameTab(tab)}>
-                {tab.name}
-              </span>
-              <button
-                className="tab-close"
-                title={t('deleteTabTitle')}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  deleteTab(tab)
-                }}
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-        <button
-          className="add-tab-btn"
-          onClick={addTab}
-          disabled={isTabLimitReached}
-          title={
-            isTabLimitReached ? t('addTabLimitReached', { max: MAX_TABS }) : undefined
-          }
-        >
-          {t('addTab')}
-        </button>
-        <button className="clear-all-btn" onClick={clearAllData}>
-          {t('clearAll')}
-        </button>
-        <button
-          className="clear-all-btn"
-          onClick={requestNotificationPermission}
-          title={
-            notificationPermission === 'denied'
+      <header className="app-top-bar">
+        <h1>{t('pageTitle')}</h1>
+        <div className="app-top-bar-actions">
+          <button
+            type="button"
+            className="notification-toggle-btn"
+            onClick={requestNotificationPermission}
+            title={
+              notificationPermission === 'denied'
                 ? t('notificationsBlocked')
                 : notificationPermission === NOTIFICATION_UNSUPPORTED
                   ? t('notificationsUnsupported')
                   : notificationEnabled
                     ? t('notificationsOn')
                     : t('notificationsOff')
-          }
-        >
-          {notificationPermission === NOTIFICATION_UNSUPPORTED
-            ? t('notificationsUnsupported')
-            : notificationEnabled
-              ? t('disableNotifications')
-              : t('enableNotifications')}
-        </button>
-        <span
-          className="label-small"
-          title={
-            notificationPermission === 'granted'
-              ? t('notificationsOn')
+            }
+          >
+            {notificationPermission === NOTIFICATION_UNSUPPORTED
+              ? t('notificationsUnsupported')
+              : notificationEnabled
+                ? t('disableNotifications')
+                : t('enableNotifications')}
+          </button>
+          <span
+            className="label-small notification-status"
+            title={
+              notificationPermission === 'granted'
+                ? t('notificationsOn')
+                : notificationPermission === 'denied'
+                  ? t('notificationsBlocked')
+                  : notificationPermission === NOTIFICATION_UNSUPPORTED
+                    ? t('notificationsUnsupported')
+                    : undefined
+            }
+          >
+            {notificationPermission === 'granted'
+              ? notificationEnabled
+                ? t('notificationsOn')
+                : t('notificationsOff')
               : notificationPermission === 'denied'
                 ? t('notificationsBlocked')
                 : notificationPermission === NOTIFICATION_UNSUPPORTED
                   ? t('notificationsUnsupported')
-                  : undefined
-          }
-        >
-          {notificationPermission === 'granted'
-            ? notificationEnabled
-              ? t('notificationsOn')
-              : t('notificationsOff')
-            : notificationPermission === 'denied'
-              ? t('notificationsBlocked')
-              : notificationPermission === NOTIFICATION_UNSUPPORTED
-                ? t('notificationsUnsupported')
-                : t('notificationsOff')}
-        </span>
+                  : t('notificationsOff')}
+          </span>
+          <button
+            type="button"
+            className="lang-toggle-btn"
+            onClick={() => setLanguage((l) => (l === 'zh' ? 'en' : 'zh'))}
+          >
+            {t('switchLang')}
+          </button>
+        </div>
+      </header>
+
+      <div className="app-toolbar">
+        <div className="app-toolbar-inner">
+          <div className="tabs-row-add">
+            <button
+              type="button"
+              className="add-tab-btn"
+              onClick={addTab}
+              disabled={isTabLimitReached}
+              title={
+                isTabLimitReached ? t('addTabLimitReached', { max: MAX_TABS }) : undefined
+              }
+            >
+              {t('addTab')}
+            </button>
+          </div>
+
+          <div className="tabs-row-secondary tabs-row-with-actions">
+            <div className="tabs tabs-chunk">
+              {tabsFirstRow.map((tab) => (
+                <div
+                  key={tab.id}
+                  className={`tab ${tab.id === activeTabId ? 'active' : ''}`}
+                  onClick={() => setActiveTabId(tab.id)}
+                >
+                  <span className="tab-name" onDoubleClick={() => openRenameTab(tab)}>
+                    {tab.name}
+                  </span>
+                  <button
+                    type="button"
+                    className="tab-close"
+                    title={t('deleteTabTitle')}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      deleteTab(tab)
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+            {tabs.length <= 5 && (
+              <div className="tabs-row-actions">{toolbarSortClear}</div>
+            )}
+          </div>
+
+          {tabs.length > 5 && (
+            <div className="tabs-row-overflow tabs-row-with-actions">
+              <div className="tabs tabs-chunk">
+                {tabsOverflowRows.map((tab) => (
+                  <div
+                    key={tab.id}
+                    className={`tab ${tab.id === activeTabId ? 'active' : ''}`}
+                    onClick={() => setActiveTabId(tab.id)}
+                  >
+                    <span className="tab-name" onDoubleClick={() => openRenameTab(tab)}>
+                      {tab.name}
+                    </span>
+                    <button
+                      type="button"
+                      className="tab-close"
+                      title={t('deleteTabTitle')}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        deleteTab(tab)
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="tabs-row-actions">{toolbarSortClear}</div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="timers-container" ref={activeContainerRef}>
@@ -947,6 +1033,14 @@ export default function App() {
             key={tm.id}
             data-timer-id={tm.id}
             className={`timer-card ${tm.finished ? 'finished' : ''}`}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter') return
+              if (e.shiftKey || e.ctrlKey || e.metaKey || e.altKey) return
+              if (renameTabDialog) return
+              if (e.target.tagName === 'BUTTON') return
+              e.preventDefault()
+              toggleStart(activeTab.id, tm.id)
+            }}
           >
             <div className="timer-zone">
               <div className="zone-row">

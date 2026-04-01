@@ -43,14 +43,120 @@
 
 h1 {
   margin-top: 0;
+  margin-bottom: 0;
   font-size: 24px;
 }
 
-.tabs-bar {
+.app-top-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.app-top-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.notification-status {
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.notification-toggle-btn {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: none;
+  background: #0071e3;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.notification-toggle-btn:disabled {
+  background: #b9b9bf;
+  cursor: not-allowed;
+  opacity: 0.85;
+}
+
+.app-toolbar {
   margin: 12px 0 16px;
+  min-width: 0;
+}
+
+.app-toolbar-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+}
+
+.tabs-row-add {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.tabs-row-secondary,
+.tabs-row-overflow {
+  width: 100%;
+}
+
+/* tab 列 + 排序／清空：排序在列寬度內水平置中、清空靠右 */
+.tabs-row-with-actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  min-width: 0;
+  gap: 8px;
+}
+
+.tabs-row-with-actions .tabs-chunk {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  box-sizing: border-box;
+}
+
+/* 該列有排序／清空時，預留右側給按鈕，避免與 tab 文字重疊 */
+.tabs-row-with-actions:has(.toolbar-sort-btn) .tabs-chunk {
+  padding-right: 120px;
+}
+
+.tabs-row-with-actions .toolbar-sort-btn {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
+.tabs-row-with-actions .toolbar-clear-all-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.tabs-row-actions {
+  display: contents;
 }
 
 .tabs {
@@ -58,6 +164,7 @@ h1 {
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 
 .tab {
@@ -116,8 +223,24 @@ h1 {
   opacity: 0.8;
 }
 
-.tabs-bar .clear-all-btn {
-  margin-left: auto;
+.sort-remaining-btn {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: none;
+  background: #0071e3;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sort-remaining-btn:disabled {
+  background: #b9b9bf;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.toolbar-clear-all-btn {
   padding: 8px 14px;
   border-radius: 999px;
   border: none;
@@ -125,13 +248,10 @@ h1 {
   color: #fff;
   font-size: 14px;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .lang-toggle-btn {
-  position: fixed;
-  top: 16px;
-  right: 16px;
-  z-index: 2000;
   padding: 8px 14px;
   border-radius: 999px;
   border: none;
@@ -139,7 +259,8 @@ h1 {
   color: #fff;
   font-size: 13px;
   cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  white-space: nowrap;
 }
 
 .timers-container {
@@ -499,10 +620,32 @@ body.is-dragging-timer {
     font-size: 20px;
   }
 
-  .tabs-bar {
-    flex-wrap: wrap;
-    gap: 6px;
+  .app-top-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .app-top-bar-actions {
+    margin-left: 0;
+    justify-content: flex-end;
+  }
+
+  .app-toolbar {
     margin: 8px 0 10px;
+  }
+
+  .app-toolbar-inner {
+    gap: 6px;
+  }
+
+  .tabs-row-with-actions:has(.toolbar-sort-btn) .tabs-chunk {
+    padding-right: 100px;
+  }
+
+  .tabs-row-with-actions .toolbar-sort-btn,
+  .tabs-row-with-actions .toolbar-clear-all-btn {
+    font-size: 12px;
+    padding: 7px 10px;
   }
 
   .timers-container {
@@ -671,9 +814,8 @@ body.is-dragging-timer {
     font-size: 12px;
   }
 
+  .notification-toggle-btn,
   .lang-toggle-btn {
-    top: max(12px, env(safe-area-inset-top, 0px));
-    right: max(12px, env(safe-area-inset-right, 0px));
     padding: 7px 12px;
     font-size: 12px;
   }
